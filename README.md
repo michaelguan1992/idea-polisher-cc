@@ -13,7 +13,7 @@ design is carried over from that project's reviewed plan
 ## What it does
 
 - `/idea-polish "<idea>"` runs a critic↔resolver loop until no critic has a
-  constructive critique left, or after K rounds (default 3).
+  constructive critique left, or after K rounds (default 10).
 - Every reachable model critiques the idea each round; Claude (the host, and the
   idea **owner**) synthesizes one revised idea from the critiques + peer
   fix-proposals.
@@ -40,7 +40,7 @@ design is carried over from that project's reviewed plan
 /idea-polish "<your idea>" --resolve-first
 ```
 
-- `--rounds N` — max critique/resolve rounds (default 3).
+- `--rounds N` — max critique/resolve rounds (default 10).
 - `--resolve-first` — skip entry classification; resolve before the first critique
   (useful when the idea text already contains its own critiques).
 
@@ -57,6 +57,10 @@ Output lands in `runs/<timestamp>/` under your current directory: `summary.md`, 
 - **You need ≥2 reachable models for a real cross-model run.** With Claude only,
   the tool degrades to a single model reviewing its own idea — still useful, but
   not the cross-model debate the plugin is for.
+- **Remember to set each chosen model and its reasoning level.** The peer CLIs and
+  Claude's subagents otherwise run on their defaults; pin the model + reasoning
+  effort per peer (see `skills/idea-polish/references/peers.md`) and in the
+  `agents/*.md` frontmatter for the quality you want.
 
 ## ⚠️ Security warning
 

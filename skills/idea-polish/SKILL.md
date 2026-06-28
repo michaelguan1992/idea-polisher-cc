@@ -40,7 +40,7 @@ prompt templates, and the security posture.
 
 - **Idea:** from the command argument; else from a `--file <path>` argument; else
   ask the user for it.
-- **K (max rounds):** `--rounds N`, default **3**.
+- **K (max rounds):** `--rounds N`, default **10**.
 - **Owner:** default `claude` (the host). A non-Claude owner is out of scope for v1.
 - **`--resolve-first`:** if present, skip entry classification and resolve before the
   first critique.

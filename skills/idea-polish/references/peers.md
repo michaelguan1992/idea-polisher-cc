@@ -15,6 +15,13 @@ never appears here — its turns run natively through the `idea-critic` /
 A reachable call exits 0; treat a non-zero exit, a timeout (default 120s), or a
 missing binary as a failure (skip that peer for that step).
 
+> **Reminder — pin the model and reasoning level.** The commands above use each
+> CLI's *default* model and reasoning effort. For a deliberate cross-model debate,
+> set them explicitly per peer (e.g. `codex exec -m <model> -c model_reasoning_effort=high …`,
+> `agy --model <model> …`) — and set Claude's own model/effort in the `idea-critic`
+> / `idea-resolver` agent frontmatter. A weak or low-effort setting silently
+> degrades the critique quality.
+
 ## Security posture (do not weaken)
 
 The peer CLIs run agents on the user's idea text, and `agy` runs with
