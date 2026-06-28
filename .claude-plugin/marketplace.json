@@ -1,0 +1,25 @@
+{
+  "name": "idea-polisher-cc",
+  "owner": {
+    "name": "Michael Guan"
+  },
+  "metadata": {
+    "description": "Marketplace for the idea-polisher-cc Claude Code plugin",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "idea-polisher-cc",
+      "description": "Cross-model idea-polishing debate (Claude + Codex + Antigravity) as a Claude Code plugin.",
+      "author": {
+        "name": "Michael Guan"
+      },
+      "tags": [
+        "idea",
+        "cross-model",
+        "workflow-automation"
+      ],
+      "source": "./"
+    }
+  ]
+}

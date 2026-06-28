@@ -1,0 +1,17 @@
+{
+  "name": "idea-polisher-cc",
+  "version": "0.1.0",
+  "description": "Polish an idea via a cross-model critic/resolver debate (Claude + Codex + Antigravity) as native Claude Code skills and subagents.",
+  "author": {
+    "name": "Michael Guan"
+  },
+  "repository": "https://github.com/michaelguan1992/idea-polisher-cc",
+  "license": "MIT",
+  "keywords": [
+    "idea",
+    "brainstorming",
+    "cross-model",
+    "critique",
+    "workflow-automation"
+  ]
+}

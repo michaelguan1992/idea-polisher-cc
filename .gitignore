@@ -1,0 +1,5 @@
+# Run output (generated each invocation)
+runs/
+
+.DS_Store
+__pycache__/
