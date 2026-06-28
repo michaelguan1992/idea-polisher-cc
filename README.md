@@ -38,11 +38,34 @@ design is carried over from that project's reviewed plan
 /idea-polish --file path/to/idea.md
 /idea-polish "<your idea>" --rounds 2
 /idea-polish "<your idea>" --resolve-first
+/idea-polish "<your idea>" --with gemini
+/idea-polish "<your idea>" --without agy
+/idea-polish "<your idea>" --peers codex,gemini
 ```
 
 - `--rounds N` — max critique/resolve rounds (default 10).
 - `--resolve-first` — skip entry classification; resolve before the first critique
   (useful when the idea text already contains its own critiques).
+- `--peers <a,b,...>` — run exactly this set of peers (overrides the defaults).
+- `--with <a,b,...>` — add these peers to the defaults.
+- `--without <a,b,...>` — drop these peers from the defaults.
+
+The **default set** is the Claude host (always on — not a selectable peer) plus the
+default-on peers `codex` and `agy`. Flags select among **peers only**, so `claude`
+is not a valid flag value (`--without claude` / `--peers claude` error). Resolution:
+`base = --peers if given, else the defaults; selected = (base + --with) − --without`.
+With no flags the run is exactly the current behavior. An unknown peer name errors
+and lists the registered peers.
+
+### Adding a model
+
+Any conforming CLI can join as a peer — add a row to the roster in
+[`skills/idea-polish/references/peers.md`](skills/idea-polish/references/peers.md)
+(§ Peer roster) and follow the contract in its § Adding a peer. The plugin ships
+only `codex` and `agy` registered; you register the rest. Every added peer inherits
+the same security posture (enforced file/stdin prompt passing, untrusted-output
+wrapping) and the same `--dangerously-skip-permissions` blast-radius warning below —
+only add peers whose binaries you trust on your idea text.
 
 Output lands in `runs/<timestamp>/` under your current directory: `summary.md`, the
 `idea-v*.md` snapshots, and per-round `critiques-*.json`.

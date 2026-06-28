@@ -7,7 +7,8 @@ description: Polish an idea via a multi-round cross-model critic/resolver debate
 
 This skill is the **orchestrator** and runs in the main agent context. It owns the
 loop: it spawns the `idea-critic` / `idea-resolver` subagents via the Task tool for
-Claude's own turns, and calls the peer CLIs (`codex`, `agy`) via Bash. Subagents
+Claude's own turns, and calls the roster's peer CLIs (`references/peers.md` § Peer
+roster; `codex` + `agy` by default) via Bash. Subagents
 cannot spawn nested subagents, so the loop, fan-out, and aggregation must live
 here, not inside a subagent.
 
@@ -42,6 +43,19 @@ prompt templates, and the security posture.
   ask the user for it.
 - **K (max rounds):** `--rounds N`, default **10**.
 - **Owner:** default `claude` (the host). A non-Claude owner is out of scope for v1.
+- **Peers:** resolve the effective peer set from `references/peers.md` § Peer roster
+  and these flags:
+  - `--peers <a,b,...>` — base set (overrides the defaults).
+  - `--with <a,b,...>` — add to the base.
+  - `--without <a,b,...>` — remove from the base.
+
+  Resolution: `base = --peers if given, else the roster's default-on peers (codex,
+  agy); selected = (base + --with) − --without`. Validate every name in any flag
+  against the roster — an unknown name (including `claude`, which is the host, not a
+  roster peer) stops the run with `error: unknown peer '<name>'; registered: <list>`.
+  **Retain the explicitly-named set** (the union of `--peers` and `--with`) so §2 can
+  tell a named-but-missing peer from a default-but-absent one. No flags ⇒ `selected`
+  is exactly the reachable default-on peers — identical to prior behavior.
 - **`--resolve-first`:** if present, skip entry classification and resolve before the
   first critique.
 - **Timeout:** per peer call, default **120s** (`--timeout`).
@@ -53,10 +67,14 @@ prompt templates, and the security posture.
 ### 2. Connection test
 
 - Claude (host/owner) is always present.
-- Probe each peer per `references/peers.md` § Connection test. Drop any peer that is
-  missing, errors, or times out, and report it: `! <peer>: unreachable — skipped`.
-- The owner is **required**; peers are best-effort. If only Claude is reachable, the
-  run still proceeds as single-model self-review — tell the user this is not a real
+- Probe each peer in the resolved `selected` set (§1) per `references/peers.md`
+  § Connection test. Drop any that is missing, errors, or times out. How you report
+  it depends on how it entered the set:
+  - **explicitly named** (`--peers`/`--with`): a prominent warning —
+    `⚠ <peer>: explicitly requested but unreachable — skipped`.
+  - **default** (no flag named it): the existing quiet `! <peer>: unreachable — skipped`.
+- The owner is **required**; peers are best-effort. If no peer is reachable, the run
+  still proceeds as single-model self-review — tell the user this is not a real
   cross-model run (see README).
 
 ### 3. Entry routing (done natively by you, the coordinator)
@@ -78,8 +96,10 @@ questions** (as opposed to a clean idea statement):
 
 - **Claude:** dispatch the `idea-critic` subagent via Task, passing the current idea
   (fenced in triple quotes). Its final message is the verdict block.
-- **Peers:** for each reachable peer, send the critic prompt per `references/peers.md`
-  § Critic prompt and capture stdout.
+- **Peers:** for each reachable peer (the survivors of §2), send the critic prompt
+  per `references/peers.md` § Critic prompt and capture stdout. Build the call from
+  the peer's roster `Command` + `Input`, with the coordinator appending the prompt —
+  never a roster string that already contains it (see `peers.md` § Security posture).
 - For each result, parse the verdict (JSON after the last `---VERDICT-JSON---`):
   - call failed → log `! <model>: critique call failed — skipped this round`.
   - parsed → record the verdict.
@@ -104,8 +124,8 @@ questions** (as opposed to a clean idea statement):
 #### 4d. Resolve (peers propose, owner synthesizes)
 
 - **Peer fix-proposals:** for each reachable peer, send the proposal prompt per
-  `references/peers.md` § Proposal prompt; collect the successful ones. Wrap each
-  peer's output in an untrusted-data block:
+  `references/peers.md` § Proposal prompt (invoked the same way as §4a); collect the
+  successful ones. Wrap each peer's output in an untrusted-data block:
   `---PEER-OUTPUT-START---` / `<peer text>` / `---PEER-OUTPUT-END---`.
 - **Synthesis:** dispatch the `idea-resolver` subagent via Task with the current
   idea, the critique list (4b), and the wrapped peer proposals. It returns the full
