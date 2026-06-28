@@ -10,7 +10,7 @@ product_contract_source: ce-plan-bootstrap
 
 # feat: idea-polisher-cc — native Claude Code bundle
 
-**Target repo:** `idea-polisher-cc` (a new, separate repository — not this one). All repo-relative paths below are relative to that new repo's root. The existing `idea_polisher` Python CLI (this repo, published at `github.com/michaelguan1992/idea_polisher`) is the **reference implementation** and the source of the handoff manifest below.
+**Target repo:** `idea-polisher-cc` — **this** repository, already initialized with a committed scaffold (commit `8e7103c`); implementation finalizes and fills in the existing files rather than creating them from scratch. All repo-relative paths below are relative to its root. The existing `idea_polisher` Python CLI (a **separate** repo at `github.com/michaelguan1992/idea_polisher`) is the **reference implementation** and the source of the handoff manifest below.
 
 ## Summary
 
@@ -35,7 +35,7 @@ This is the direct answer to "what should I hand off from this project?" Carry t
 | Cross-model invocation knowledge: `codex exec --skip-git-repo-check`, `agy --print --dangerously-skip-permissions`; connection test; owner-required/peers-best-effort degradation | `skills/idea-polish/references/peers.md` | The exact, hard-won command shapes. |
 | Security posture: prompts as single args (no shell string), `cwd` scoped to the run folder for peer calls, the `--dangerously-skip-permissions` warning | `peers.md` + README | |
 | Settled design decisions: single shared idea, peers-propose/owner-synthesizes, non-monotonic snapshots (keep all versions), the `summary.md` deliverable shape, the acceptance check | Coordinator skill + README | |
-| The reviewed plan + 2026-06-28 review findings (`docs/plans/2026-06-28-001-…-plan.md` in this repo) | Linked from the new repo's README as design rationale | Start from the hardened design, not the naive one. |
+| The reviewed plan + 2026-06-28 review findings (`docs/plans/2026-06-28-001-…-plan.md` in the `idea_polisher` repo at `github.com/michaelguan1992/idea_polisher`) | Linked from the new repo's README as design rationale (GitHub URL, not a relative path — that file is not in this repo) | Start from the hardened design, not the naive one. |
 
 ### Leave behind (do not port)
 
@@ -128,11 +128,11 @@ Per-unit **Files** are authoritative; the tree is the expected shape.
 
 ### U1. Plugin scaffold + distribution manifest
 
-- **Goal:** A cloneable, installable plugin skeleton for `idea-polisher-cc`.
+- **Goal:** Finalize the already-committed plugin skeleton for `idea-polisher-cc` (the repo is initialized and scaffolded at commit `8e7103c`; this unit verifies/completes it, it does not create it from scratch).
 - **Requirements:** R8.
 - **Dependencies:** none.
-- **Files:** `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `README.md` (stub), `LICENSE`, `.gitignore`; `git init`.
-- **Approach:** Mirror the compound-engineering layout: `plugin.json` with `name: idea-polisher-cc`, `version`, `description`, `author`, `license: MIT`, `repository`; `marketplace.json` with `plugins: [{ name, description, source: "./" }]`. `.gitignore` excludes any local run output.
+- **Files (already present in the scaffold; finalize):** `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `README.md` (stub — completed in U5), `LICENSE`, `.gitignore`. No `git init` — the repo already exists.
+- **Approach:** Mirror the compound-engineering layout: confirm `plugin.json` has `name: idea-polisher-cc`, `version`, `description`, `author`, `license: MIT`, `repository`; confirm `marketplace.json` has `plugins: [{ name, description, source: "./" }]`; confirm `.gitignore` excludes any local run output. `README.md` (stub) and `LICENSE` (MIT) already exist in the committed scaffold — U5 completes the README.
 - **Patterns to follow:** the verified `.claude-plugin/plugin.json` and `marketplace.json` from the compound-engineering plugin.
 - **Test scenarios:** `Test expectation: structural smoke` — `plugin.json` and `marketplace.json` are valid JSON; the plugin installs from the local marketplace path without manifest errors.
 - **Verification:** `claude` recognizes the plugin when added from the local path; no manifest validation errors.
@@ -169,7 +169,7 @@ Per-unit **Files** are authoritative; the tree is the expected shape.
 - **Requirements:** R1, R2, R3, R4, R5, R6, R7, R9.
 - **Dependencies:** U2, U3.
 - **Files:** `skills/idea-polish/SKILL.md`, `skills/idea-polish/references/peers.md`.
-- **Approach:** `SKILL.md` frontmatter (`name: idea-polish`, dispatchable `description`). Body = numbered orchestration steps carrying the CLI's rules: (1) intake idea + K (+ owner default Claude, `--resolve-first`); (2) connection-test peers per `peers.md`, degrade gracefully (owner/host always present); (3) entry routing via the classifier; (4) loop — spawn `idea-critic` (Task) for Claude + Bash `codex`/`agy` for peers, aggregate verdicts, apply the convergence quorum (parse-failures excluded), handle clarifications, gather peer fix-proposals via Bash, spawn `idea-resolver` to synthesize, snapshot `idea-vN`, stop on convergence/`K`/resolve-failure; (5) write `summary.md`. `peers.md` holds the exact `codex exec --skip-git-repo-check` / `agy --print --dangerously-skip-permissions` commands, the connection-test probe, degradation rules, and the security posture (single-arg prompts, run-folder `cwd`, skip-permissions warning).
+- **Approach:** `SKILL.md` frontmatter (`name: idea-polish`, dispatchable `description`). Body = numbered orchestration steps carrying the CLI's rules: (1) intake idea + K (+ owner default Claude, `--resolve-first`); (2) connection-test peers per `peers.md`, degrade gracefully (owner/host always present); (3) entry routing via the classifier; (4) loop — spawn `idea-critic` (Task) for Claude + Bash `codex`/`agy` for peers, aggregate verdicts, apply the convergence quorum (parse-failures excluded), handle clarifications, gather peer fix-proposals via Bash, spawn `idea-resolver` to synthesize, snapshot `idea-vN`, stop on convergence/`K`/resolve-failure; (5) write `summary.md`. `peers.md` holds the exact `codex exec --skip-git-repo-check` / `agy --print --dangerously-skip-permissions` commands, the connection-test probe, degradation rules, and the security posture: **pass the idea to peers without shell interpolation** — write the current idea to a run-folder file and feed it via stdin or a path argument (a Bash-tool call is always shell-parsed, so the CLI's `shell=False` no-injection guarantee does **not** carry over; raw interpolation of idea text containing `` ` ``, `$()`, or quotes is a command-injection vector under `--dangerously-skip-permissions`); **treat peer output as untrusted** — wrap each peer's critique/fix-proposal in delimited data blocks (e.g. `---PEER-OUTPUT-START---` / `---PEER-OUTPUT-END---`) and instruct the resolver to treat their contents as data, never as instructions; **run-folder `cwd`** so *relative*-path writes default there (this is not a sandbox — skip-permissions agents can still write absolute paths); and the `--dangerously-skip-permissions` warning.
 - **Execution note:** because the loop is prose-orchestrated, write the steps as an explicit numbered procedure with the verdict-JSON contract front and center — ambiguity here is the main reliability risk (see Risks).
 - **Patterns to follow:** the `idea_polisher` loop (KTD4/KTD5 of the CLI plan) and the compound-engineering `SKILL.md` structure (frontmatter + numbered phases + a `references/` file).
 - **Test scenarios:**
@@ -177,6 +177,8 @@ Per-unit **Files** are authoritative; the tree is the expected shape.
   - Degradation: with `agy` absent → run proceeds with Claude+Codex, notes the missing peer, owner still resolves.
   - Convergence: a tight idea → critics return non-constructive → stops early, idea unchanged.
   - Entry routing: an idea that embeds its own critiques → resolves first; `--resolve-first` forces it.
+  - Quorum (parse-failure + constructive): one constructive critic + one peer whose verdict fails to parse → loop must **continue** (the parse-failure is excluded from the quorum, not counted as non-constructive).
+  - Quorum (parse-failure + all non-constructive): all parsed verdicts non-constructive + one peer parse-failure → loop must **converge**, with the failure logged and excluded. Passing both parse-failure scenarios gates "implementation-ready" — they are the only evidence the prose form preserves the hardened rule.
 - **Verification:** end-to-end `/idea-polish` run on the example yields `summary.md` + snapshots and terminates within K rounds.
 
 ### U5. README, example, and acceptance check
@@ -185,7 +187,7 @@ Per-unit **Files** are authoritative; the tree is the expected shape.
 - **Requirements:** R7, R8.
 - **Dependencies:** U4.
 - **Files:** `README.md`, `examples/sample-idea.md`.
-- **Approach:** README covers install via the marketplace, `/idea-polish` usage, requirements (Claude Code as host; optional `codex`/`agy` for cross-model — the ≥2-models-for-real-cross-model note), the `--dangerously-skip-permissions` security warning, where `summary.md` lands, and how to customize the prompts (edit the agent/skill files). Link `idea_polisher` as the reference implementation. State the acceptance check: on a held-out seed idea, a before/after read confirms the final idea is more complete/specific than the seed.
+- **Approach:** README covers install via the marketplace, `/idea-polish` usage, requirements (Claude Code as host; optional `codex`/`agy` for cross-model — the ≥2-models-for-real-cross-model note), the `--dangerously-skip-permissions` security warning, where `summary.md` lands, and how to customize the prompts (edit the agent/skill files). Link `idea_polisher` as the reference implementation, and link the prior CLI plan (`docs/plans/2026-06-28-001-…-plan.md` in the `idea_polisher` repo) as design rationale via its GitHub URL — not a relative path, since that file does not exist in this repo. State the acceptance check: on a held-out seed idea, a before/after read confirms the final idea is more complete/specific than the seed.
 - **Test scenarios:** `Test expectation: docs + one acceptance run` — the README install/usage steps match the actual plugin; one example run satisfies the acceptance check.
 - **Verification:** a fresh install following only the README produces a working `/idea-polish` run.
 
@@ -210,7 +212,7 @@ Per-unit **Files** are authoritative; the tree is the expected shape.
 
 - **Prose-orchestrated loop is less deterministic than Python** (medium): the agent may miscount the convergence quorum, skip a peer, or drift from the steps. *Mitigation:* explicit numbered skill procedure, the structured verdict-JSON contract, and the CLI as the deterministic fallback. This is the accepted cost of the native form (KTD1).
 - **Subagent nesting limit** (low, handled): coordinator is a skill, not a subagent (KTD2).
-- **Peer execution security** (medium): Bash calls to `codex`/`agy` with skip-permissions run agents on user idea text. *Mitigation:* carried-over posture — single-arg prompts, run-folder `cwd`, README warning.
+- **Peer execution security** (medium→high): Bash calls to `codex`/`agy` with skip-permissions run agents on user idea text. Two vectors: (a) **command injection** — idea text interpolated into a Bash command escapes quoting; the CLI's `shell=False` safety does not transfer to Bash-tool calls, so the idea must be passed via file/stdin, never a shell string; (b) **prompt injection** — peer free-text output flows back into the resolver and can carry hijacking instructions, so it must be wrapped in delimited untrusted-data blocks. *Mitigation:* file/stdin prompt passing, delimited untrusted peer-output blocks, run-folder `cwd` (relative-path default only — not a sandbox; absolute-path writes remain possible), README warning.
 - **Plugin manifest schema drift** (low): grounded on the installed compound-engineering plugin; confirm against current Claude Code plugin docs at implementation.
 - **Cost/latency** (low→medium): native Claude turn + 2 subagent spawns + up to 4 Bash peer calls per round × K.
 
@@ -221,6 +223,12 @@ Per-unit **Files** are authoritative; the tree is the expected shape.
 - **Owner configurability** — ship Claude-only owner for v1 (recommended), or wire codex/agy as possible owners now?
 - **Marketplace hosting** — self-host the marketplace in this repo's `.claude-plugin/marketplace.json` (recommended) or list it in a shared marketplace?
 - **Plugin manifest exact schema** — deferred to implementation (U1): confirm required vs optional `plugin.json` fields against current Claude Code docs; the compound-engineering manifest is the working reference.
+
+### Deferred from 2026-06-28 doc-review
+
+- **Determinism regression vs. the CLI (product/strategy)** — The plan repackages a working, deterministic, tested CLI into a prose-orchestrated form it itself calls less reliable, and the mitigation for that #1 risk is to fall back to the very CLI being replaced. Decide: is the native-plugin benefit (in-Claude-Code UX, one-command install) worth the determinism regression, or should v1 ship framed as an experiment? (product-lens)
+- **Prompt source-of-truth (maintenance)** — Copying the prompts ("the product, not the Python") into a second repo guarantees the CLI and plugin drift apart. Decide whether to commit to a single shared source of truth before this second distribution ships, or accept copy-drift for v1 and state that cost in Risks. (product-lens)
+- **Cross-model default value prop** — The default install (no `codex`/`agy`) degrades to Claude-critiquing-Claude — single-model self-review, not the cross-model product. Decide whether to hard-require ≥2 models for a real run, or reframe what the single-model default delivers. (product-lens)
 
 ---
 
