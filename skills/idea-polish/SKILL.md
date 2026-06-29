@@ -5,19 +5,158 @@ description: Polish an idea via a multi-round cross-model critic/resolver debate
 
 # Idea Polish (coordinator)
 
-> **Scaffold — implement per `docs/plans/2026-06-28-002-feat-idea-polisher-cc-bundle-plan.md` (U4).**
-> This skill is the orchestrator and must run in the main agent context (it spawns
-> the `idea-critic` / `idea-resolver` subagents via Task and calls peer CLIs via
-> Bash — subagents cannot nest, so the loop lives here, not in a subagent).
+This skill is the **orchestrator** and runs in the main agent context. It owns the
+loop: it spawns the `idea-critic` / `idea-resolver` subagents via the Task tool for
+Claude's own turns, and calls the roster's peer CLIs (`references/peers.md` § Peer
+roster; `codex` + `agy` by default) via Bash. Subagents
+cannot spawn nested subagents, so the loop, fan-out, and aggregation must live
+here, not inside a subagent.
 
-Carry the loop verbatim from the `idea_polisher` reference implementation
-(`idea_polish.py`: `run_polish`, `critique_phase`, `resolve_phase`, `is_converged`,
-`classify_entry`) and the prompt constants. Numbered phases to implement:
+Claude is the **host**, so it is always available and is the default idea **owner /
+resolver** (its turns run natively — no `claude -p` subprocess). Codex and
+Antigravity are **peers**: they critique and propose fixes via Bash, best-effort.
 
-1. **Intake** — idea (arg / file / ask) and K rounds; owner defaults to Claude; honor a resolve-first override.
-2. **Connection test** — Claude is the host (always present); probe `codex` / `agy` per `references/peers.md`; degrade gracefully (owner required, peers best-effort).
-3. **Entry routing** — classify whether the idea already contains critiques → resolve-first vs critique-first (default critique-first on failure).
-4. **Loop** (≤ K rounds): spawn `idea-critic` for Claude + Bash `codex`/`agy` critiques → aggregate verdicts → apply the convergence quorum (≥1 parsed critic, all parsed non-constructive; parse-failures logged and excluded) → handle clarifications → gather peer fix-proposals via Bash → spawn `idea-resolver` to synthesize → snapshot `idea-vN` → stop on convergence / K / resolve-failure.
-5. **Output** — write `summary.md` (polished idea, per-round digest with dispositions, models, stop reason).
+The behavior below is carried from the `idea_polisher` CLI reference
+implementation. Follow the numbered procedure exactly — because the loop is
+prose-orchestrated, the convergence quorum and the verdict contract are the
+reliability-critical parts. See `references/peers.md` for the exact peer commands,
+prompt templates, and the security posture.
 
-See `references/peers.md` for the exact peer commands and security posture.
+## Definitions (carry verbatim)
+
+- **Verdict delimiter:** `---VERDICT-JSON---`. A critic's verdict is the JSON object
+  after the **last** occurrence. Shape: `{"constructive": bool, "critiques": [str], "clarifications": [str]}`.
+- **Disposition delimiter:** `---DISPOSITION---`. The resolver's reply is the revised
+  idea before it, the per-critique disposition after it.
+- **Parse failure:** a critic call that succeeded but whose verdict can't be parsed
+  (no delimiter, or invalid JSON). Its raw text is still usable as an unstructured
+  critique, but it is **excluded from the convergence quorum**.
+- **Convergence quorum:** the loop has converged iff **at least one** verdict parsed
+  AND **every parsed** verdict has `constructive: false` with no `clarifications`.
+  Parse failures and failed calls do not count toward or against the quorum.
+
+## Procedure
+
+### 1. Intake
+
+- **Idea:** from the command argument; else from a `--file <path>` argument; else
+  ask the user for it.
+- **K (max rounds):** `--rounds N`, default **10**.
+- **Owner:** default `claude` (the host). A non-Claude owner is out of scope for v1.
+- **Peers:** resolve the effective peer set from `references/peers.md` § Peer roster
+  and these flags:
+  - `--peers <a,b,...>` — base set (overrides the defaults).
+  - `--with <a,b,...>` — add to the base.
+  - `--without <a,b,...>` — remove from the base.
+
+  Resolution: `base = --peers if given, else the roster's default-on peers (codex,
+  agy); selected = (base + --with) − --without`. Validate every name in any flag
+  against the roster — an unknown name (including `claude`, which is the host, not a
+  roster peer) stops the run with `error: unknown peer '<name>'; registered: <list>`.
+  **Retain the explicitly-named set** (the union of `--peers` and `--with`) so §2 can
+  tell a named-but-missing peer from a default-but-absent one. No flags ⇒ `selected`
+  is exactly the reachable default-on peers — identical to prior behavior.
+- **`--resolve-first`:** if present, skip entry classification and resolve before the
+  first critique.
+- **Timeout:** per peer call, default **120s** (`--timeout`).
+- **Run folder:** create `runs/<YYYYMMDD-HHMMSS>/` under the current working
+  directory and use it for every prompt file, snapshot, and output below. All peer
+  Bash calls use this folder as their working directory (see `references/peers.md`
+  § Security). Write the original idea to `runs/<ts>/idea-v0.md`.
+
+### 2. Connection test
+
+- Claude (host/owner) is always present.
+- Probe each peer in the resolved `selected` set (§1) per `references/peers.md`
+  § Connection test. Drop any that is missing, errors, or times out. How you report
+  it depends on how it entered the set:
+  - **explicitly named** (`--peers`/`--with`): a prominent warning —
+    `⚠ <peer>: explicitly requested but unreachable — skipped`.
+  - **default** (no flag named it): the existing quiet `! <peer>: unreachable — skipped`.
+- The owner is **required**; peers are best-effort. If no peer is reachable, the run
+  still proceeds as single-model self-review — tell the user this is not a real
+  cross-model run (see README).
+
+### 3. Entry routing (done natively by you, the coordinator)
+
+Decide whether the idea text **already contains its own critiques / concerns / open
+questions** (as opposed to a clean idea statement):
+
+- If `--resolve-first` was passed → **resolve-first**.
+- Else classify the idea yourself: does it embed critiques/concerns/open questions?
+  Yes → **resolve-first**; No → **critique-first**. When genuinely unsure, default
+  to **critique-first**.
+- **Resolve-first:** run one resolve step (§4c) with the critique context
+  `"The idea text already contains embedded critiques/concerns; address them."`,
+  snapshot the result as `idea-v0-resolved.md`, then enter the loop.
+
+### 4. Loop — for round n = 1..K
+
+#### 4a. Critique (every reachable model critiques the current idea)
+
+- **Claude:** dispatch the `idea-critic` subagent via Task, passing the current idea
+  (fenced in triple quotes). Its final message is the verdict block.
+- **Peers:** for each reachable peer (the survivors of §2), send the critic prompt
+  per `references/peers.md` § Critic prompt and capture stdout. Build the call from
+  the peer's roster `Command` + `Input`, with the coordinator appending the prompt —
+  never a roster string that already contains it (see `peers.md` § Security posture).
+- For each result, parse the verdict (JSON after the last `---VERDICT-JSON---`):
+  - call failed → log `! <model>: critique call failed — skipped this round`.
+  - parsed → record the verdict.
+  - succeeded but unparseable → log `! <model>: verdict unparseable — excluded from
+    convergence quorum`, and keep its raw text as an unstructured critique.
+- Save the round's parsed verdicts to `runs/<ts>/critiques-<n>.json`.
+
+#### 4b. Convergence check
+
+- Apply the convergence quorum. If converged → stop with reason `converged`
+  (idea unchanged this round).
+- Otherwise build the critique list for the resolver: one bullet per parsed critique
+  as `- (<model>) <critique>`, plus `- (<model>, unstructured) <raw>` for each
+  succeeded-but-unparseable critic. If there are none, use `(no specific critiques)`.
+
+#### 4c. Clarifications (optional)
+
+- Collect `clarifications` from all parsed verdicts. If any and the run is
+  interactive, ask the user and append `Clarifications from the author:` + the Q/A
+  to the critique context. In non-interactive runs, log that they were skipped.
+
+#### 4d. Resolve (peers propose, owner synthesizes)
+
+- **Peer fix-proposals:** for each reachable peer, send the proposal prompt per
+  `references/peers.md` § Proposal prompt (invoked the same way as §4a); collect the
+  successful ones. Wrap each peer's output in an untrusted-data block:
+  `---PEER-OUTPUT-START---` / `<peer text>` / `---PEER-OUTPUT-END---`.
+- **Synthesis:** dispatch the `idea-resolver` subagent via Task with the current
+  idea, the critique list (4b), and the wrapped peer proposals. It returns the full
+  revised idea + `---DISPOSITION---` + per-critique disposition. Split on
+  `---DISPOSITION---`.
+- If the resolver fails, stop with reason `resolve_failed` (retain the prior idea).
+- Otherwise set the current idea to the revised idea and snapshot it as
+  `runs/<ts>/idea-v<n>.md`. Record the round's critiques + disposition.
+
+#### 4e. Continue
+
+- Loop to the next round. If round K completes without convergence, stop with reason
+  `K-rounds`.
+
+### 5. Output — write `runs/<ts>/summary.md`
+
+Carry the reference summary shape:
+
+- Header: participating models, stop reason.
+- `## Final polished idea` — the current idea.
+- `## Original idea` — the seed.
+- `## Per-round digest` — for each round: critiques addressed and the resolver's
+  disposition (or "Converged: no constructive critiques", or "Resolve step failed;
+  prior idea retained").
+- `## Idea snapshots` — list the `idea-v*.md` files, with the note: *revisions are
+  not guaranteed monotonic — the last round may not be the best.*
+
+Tell the user where `summary.md` landed and print the final polished idea.
+
+## Acceptance check
+
+On a held-out seed idea, a before/after read should confirm the final idea is more
+complete / specific than the seed. To customize behavior, edit the prompt text in
+`agents/idea-critic.md`, `agents/idea-resolver.md`, and `references/peers.md`.
