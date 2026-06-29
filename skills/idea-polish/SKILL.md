@@ -254,7 +254,10 @@ triggered sign-off did not re-resolve).
 #### 5b. Evolution record — write `runs/<ts>/summary.md`
 
 `summary.md` is the debate timeline, not the deliverable — it does **not** reproduce the
-full idea:
+full idea. **Hard rule: `summary.md` must never contain the deliverable. Do not paste the
+final idea, and do not inline the body of any `idea-v*.md` snapshot. Refer to the idea by
+filename (`final-idea.md`, `idea-v<n>.md`) only.** The sections below are the *entire*
+permitted contents:
 
 - Header: participating models, stop reason, and a pointer to `final-idea.md` as the
   deliverable.
@@ -270,6 +273,10 @@ full idea:
   no constructive critiques", or "Resolve step failed; prior idea retained".
 - `## Idea snapshots` — list the `idea-v*.md` files, with the note: *revisions are not
   guaranteed monotonic — the last round may not be the best.*
+
+**Output-contract self-check** (before finishing): confirm `final-idea.md` exists as a
+standalone file holding the full deliverable, and that `summary.md` contains no copy of
+the idea body — only pointers by filename. If either fails, fix it before reporting done.
 
 Tell the user where both `final-idea.md` and `summary.md` landed, and print the final
 polished idea (from `final-idea.md`).
