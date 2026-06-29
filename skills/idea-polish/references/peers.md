@@ -14,7 +14,7 @@ appears here.
 | Name | Command (args only, before the prompt) | Input | Default |
 |------|----------------------------------------|-------|---------|
 | codex | `codex exec --skip-git-repo-check` | arg | ✓ |
-| agy | `agy --dangerously-skip-permissions --print` | arg | ✓ |
+| agy | `agy --print` | arg | ✓ |
 
 The `Command` is **args only** — everything *before* the prompt. The coordinator
 appends the prompt itself (see § Security posture), so a row never contains the
@@ -68,8 +68,10 @@ bundled or tested; default-off):
 
 ## Security posture (do not weaken)
 
-The peer CLIs run agents on the user's idea text, and `agy` runs with
-`--dangerously-skip-permissions`. Two trust boundaries:
+The peer CLIs run agents on the user's idea text. If a peer is configured to
+auto-approve its own actions (e.g. `agy --dangerously-skip-permissions`, which the
+user opts into by adding the flag to the roster — it is not on by default), the trust
+level rises accordingly. Two trust boundaries:
 
 1. **Command injection — pass the idea without shell interpolation.** A Bash-tool
    call is always parsed by a shell, so the reference's `shell=False` no-injection
@@ -83,7 +85,7 @@ The peer CLIs run agents on the user's idea text, and `agy` runs with
    # The coordinator writes runs/<ts>/.peer-prompt.txt with the Write tool (no shell),
    # then, with the run folder as the working directory:
    codex exec --skip-git-repo-check "$(cat .peer-prompt.txt)"
-   agy --dangerously-skip-permissions --print "$(cat .peer-prompt.txt)"
+   agy --print "$(cat .peer-prompt.txt)"
    ```
 
    `"$(cat file)"` is double-quoted, so the file's contents reach the CLI as one
@@ -104,8 +106,9 @@ The peer CLIs run agents on the user's idea text, and `agy` runs with
 
 **Working directory:** run peer calls with the run folder (`runs/<ts>/`) as `cwd`,
 so a peer agent's **relative**-path writes default there. This is *not* a sandbox —
-a `--dangerously-skip-permissions` agent can still write absolute paths
-(`~/.ssh/...`, etc.). The README must carry this blast-radius warning.
+if the user has opted a peer into auto-approval (`--dangerously-skip-permissions`),
+that agent can still write absolute paths (`~/.ssh/...`, etc.). The README must carry
+this blast-radius warning.
 
 ## Connection test
 
@@ -143,19 +146,33 @@ Idea:
 {idea}
 """
 
+Charter (the seed's original problem and core thesis — the bet this idea must keep serving):
+"""
+{charter}
+"""
+
 Point out concrete weaknesses, risks, gaps, or unclear points. If something is
 genuinely unclear and blocks review, ask a clarifying question instead. Be
 specific and brief. If the idea is already solid, say so honestly.
 
+Classify each critique against the charter. A critique that would require SHIFTING
+the charter's problem or thesis — abandoning the seed's core bet (its moat/mechanism)
+or solving a different problem — is a "charter threat", not an ordinary critique. A
+critique that improves the idea WITHIN its bet (sharper wording, a missing risk, a
+narrower scope) is an ordinary critique; narrowing breadth alone is NOT a charter
+threat. Put charter-threatening points in "charter_threats" and do not also list them
+in "critiques".
+
 End your reply with a line containing exactly ---VERDICT-JSON--- followed by a JSON object:
 ---VERDICT-JSON---
-{"constructive": true, "critiques": ["..."], "clarifications": []}
+{"constructive": true, "critiques": ["..."], "clarifications": [], "charter_threats": []}
 
 Rules for the JSON:
-- "constructive": set false ONLY when you have no substantive critique and no
-  clarification request (the idea is ready to ship).
-- "critiques": your concrete critique points (empty when constructive is false).
+- "constructive": set false ONLY when you have no substantive critique, no
+  clarification request, and no charter threat (the idea is ready to ship).
+- "critiques": concrete critique points that stay within the charter's bet (empty when constructive is false).
 - "clarifications": questions you need answered (usually empty).
+- "charter_threats": points that would require shifting the charter's problem or thesis (usually empty).
 Put the JSON last, after the ---VERDICT-JSON--- line, with nothing following it.
 ```
 
@@ -169,9 +186,16 @@ Idea:
 {idea}
 """
 
+Charter (the seed's original problem and core thesis — keep your fixes within this bet):
+"""
+{charter}
+"""
+
 Critiques:
 {critiques}
 
 Propose concrete, specific fixes that address these critiques. Be brief and
-actionable. Do not rewrite the whole idea - just propose the fixes.
+actionable. Keep your fixes within the charter's problem and thesis — improve the
+idea within its bet rather than proposing a different problem or moat. Do not rewrite
+the whole idea - just propose the fixes.
 ```
