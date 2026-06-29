@@ -1,7 +1,7 @@
 ---
 name: idea-resolver
 description: Synthesize a revised idea from the aggregated critiques and peer fix-proposals, with a per-critique disposition. Dispatched by the idea-polish coordinator for the owner's resolution turn.
-tools: Read
+tools: Read, WebSearch, WebFetch
 ---
 
 # Idea Resolver
