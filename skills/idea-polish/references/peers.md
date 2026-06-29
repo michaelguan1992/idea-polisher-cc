@@ -14,7 +14,7 @@ appears here.
 | Name | Command (args only, before the prompt) | Input | Default |
 |------|----------------------------------------|-------|---------|
 | codex | `codex exec --skip-git-repo-check` | arg | ✓ |
-| agy | `agy --print --dangerously-skip-permissions` | arg | ✓ |
+| agy | `agy --dangerously-skip-permissions --print` | arg | ✓ |
 
 The `Command` is **args only** — everything *before* the prompt. The coordinator
 appends the prompt itself (see § Security posture), so a row never contains the
@@ -83,7 +83,7 @@ The peer CLIs run agents on the user's idea text, and `agy` runs with
    # The coordinator writes runs/<ts>/.peer-prompt.txt with the Write tool (no shell),
    # then, with the run folder as the working directory:
    codex exec --skip-git-repo-check "$(cat .peer-prompt.txt)"
-   agy --print --dangerously-skip-permissions "$(cat .peer-prompt.txt)"
+   agy --dangerously-skip-permissions --print "$(cat .peer-prompt.txt)"
    ```
 
    `"$(cat file)"` is double-quoted, so the file's contents reach the CLI as one
@@ -110,8 +110,11 @@ a `--dangerously-skip-permissions` agent can still write absolute paths
 ## Connection test
 
 Probe each peer once with a trivial prompt (`Reply with exactly: OK`) using the
-same file-mediated invocation. Keep the peers that exit 0; drop the rest for the
-whole run. The owner (Claude) is required and is not probed.
+same file-mediated invocation. Keep a peer only if it exits 0 **and** its output
+actually contains `OK`; drop the rest for the whole run. Exit code alone is not
+enough — an arg-order or flag-swallowing bug can exit 0 while ignoring the prompt
+entirely (the peer "answers" the wrong thing), which an exit-code-only check would
+wrongly pass. The owner (Claude) is required and is not probed.
 
 ## Graceful degradation
 
