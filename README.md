@@ -17,9 +17,12 @@ design is carried over from that project's reviewed plan
 - Every reachable model critiques the idea each round; Claude (the host, and the
   idea **owner**) synthesizes one revised idea from the critiques + peer
   fix-proposals.
-- Writes a `summary.md` with the polished idea, a per-round critique digest with
-  dispositions, the participating models, and the stop reason, plus per-round idea
-  snapshots.
+- Writes `final-idea.md` — the polished deliverable: the refined idea plus **Risks**,
+  **Open Concerns**, and **Potential Solutions** sections (synthesized by a final owner
+  pass that folds in the unresolved critiques).
+- Writes `summary.md` — the process record: a round-by-round account of the critiques
+  raised and how each was dispositioned, the participating models, and the stop reason,
+  plus per-round idea snapshots. It links to `final-idea.md` rather than reproducing it.
 
 ## Install
 
@@ -67,8 +70,9 @@ the same security posture (enforced file/stdin prompt passing, untrusted-output
 wrapping) and the same `--dangerously-skip-permissions` blast-radius warning below —
 only add peers whose binaries you trust on your idea text.
 
-Output lands in `runs/<timestamp>/` under your current directory: `summary.md`, the
-`idea-v*.md` snapshots, and per-round `critiques-*.json`.
+Output lands in `runs/<timestamp>/` under your current directory: `final-idea.md`
+(the deliverable), `summary.md` (the evolution record), the `idea-v*.md` snapshots, and
+per-round `critiques-*.json`.
 
 ## Requirements
 
@@ -87,15 +91,18 @@ Output lands in `runs/<timestamp>/` under your current directory: `summary.md`, 
 
 ## ⚠️ Security warning
 
-Peer calls run `agy` with `--dangerously-skip-permissions`, i.e. an AI agent that
-**auto-approves its own actions** on your machine while reasoning about your idea
-text. The plugin contains the blast radius as much as it can — the idea is passed
-without shell interpolation, peer output is treated as untrusted data, and peer
-processes run with the run folder as their working directory — **but cwd is not a
-sandbox**: a skip-permissions agent can still read and write absolute paths
-(`~/.ssh/...`, etc.). Only run with peers you trust, on idea text you are willing
-to expose to them. If that is not acceptable, run Claude-only (peers absent) or use
-the deterministic `idea_polisher` CLI.
+Peer calls run real AI agents on your machine while reasoning about your idea text.
+The plugin does **not** enable auto-approval by default — the shipped `agy` row is a
+plain `agy --print`. If you opt a peer into auto-approval (e.g. by adding
+`--dangerously-skip-permissions` to its roster command), that agent **auto-approves
+its own actions** on your machine, and the trust level rises accordingly. The plugin
+contains the blast radius as much as it can — the idea is passed without shell
+interpolation, peer output is treated as untrusted data, and peer processes run with
+the run folder as their working directory — **but cwd is not a sandbox**: a
+skip-permissions agent can still read and write absolute paths (`~/.ssh/...`, etc.).
+Only run with peers you trust, on idea text you are willing to expose to them. If
+that is not acceptable, run Claude-only (peers absent) or use the deterministic
+`idea_polisher` CLI.
 
 ## Customizing
 
@@ -109,7 +116,7 @@ The prompts are the product. To tune behavior, edit the prompt text in:
 ## Acceptance check
 
 On a held-out seed idea (see [`examples/sample-idea.md`](examples/sample-idea.md)),
-a before/after read of `summary.md` should confirm the final idea is more complete
+a before/after read of `final-idea.md` should confirm the final idea is more complete
 and specific than the seed.
 
 ## Layout
