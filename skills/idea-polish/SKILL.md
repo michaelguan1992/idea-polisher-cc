@@ -27,12 +27,21 @@ prompt templates, and the security posture.
 
 - **Verdict delimiter:** `---VERDICT-JSON---`. A critic's verdict is the JSON object
   after the **last** occurrence. Shape: `{"constructive": bool, "critiques": [str], "clarifications": [str], "charter_threats": [str]}`.
-- **Charter threat:** a critique point the critic judges would require **shifting the
-  charter's problem or thesis** (§1a) — i.e. abandoning the seed's core bet, not
-  improving the idea within it. Threats go in `charter_threats` and are **not**
-  duplicated in `critiques`. The field is **optional for backward compatibility**: a
-  verdict that omits it parses with `charter_threats: []` (a peer running an older
-  prompt simply contributes no threats; it does not break the round).
+- **Approach threat:** a critique point whose fix would require **rewriting the
+  charter's `## Approach` sentence(s)** (§1a) — a challenge to how the idea wins,
+  judged against the charter's text, not a notion like "the core bet". Threats go
+  in `charter_threats` (**the JSON key keeps its historical name — never rename
+  it**) and are **not** duplicated in `critiques`. The field is **optional for
+  backward compatibility**: a verdict that omits it parses with
+  `charter_threats: []` (a peer running an older prompt simply contributes no
+  threats; it does not break the round).
+- **Off-problem:** a critique (or a revision) is off-problem when acting on it
+  would not serve what the charter's `## Problem` sentence says — a tangent, or a
+  remedy that solves a different problem (the Problem is frozen for the run).
+  Off-problem items are **discarded in the round they appear** and logged in
+  `summary.md`; they are never resolved and never gated. Enforced at three
+  layers: the critic prompts (self-filter), the resolver's disposition
+  (`discarded (off-problem)`), and the coordinator (§4b screen, §4d drift check).
 - **Disposition delimiter:** `---DISPOSITION---`. The resolver's reply is the revised
   idea before it, the per-critique disposition after it.
 - **Parse failure:** a critic call that succeeded but whose verdict can't be parsed
@@ -41,15 +50,16 @@ prompt templates, and the security posture.
 - **Convergence quorum:** the loop has converged iff **at least one** verdict parsed
   AND **every parsed** verdict has `constructive: false` with no `clarifications` and
   no `charter_threats`. Parse failures and failed calls do not count toward or against
-  the quorum. (A live charter threat keeps the loop from converging — it is routed to
-  the §4b′ gate instead.)
+  the quorum. (A live approach threat keeps the loop from converging — it is routed to
+  the §4b′ gate, whose resolver defense is what talks later rounds out of re-raising it.)
 
 ## Procedure
 
 ### 1. Intake
 
 - **Idea:** from the command argument; else from a `--file <path>` argument; else
-  ask the user for it.
+  ask the user for it (in an `--auto` run, stop instead with
+  `error: --auto requires an idea argument or --file`).
 - **K (max rounds):** `--rounds N`, default **10**.
 - **Owner:** default `claude` (the host). A non-Claude owner is out of scope for v1.
 - **Peers:** resolve the effective peer set from `references/peers.md` § Peer roster
@@ -67,38 +77,59 @@ prompt templates, and the security posture.
   is exactly the reachable default-on peers — identical to prior behavior.
 - **`--resolve-first`:** if present, skip entry classification and resolve before the
   first critique.
+- **`--auto`:** non-interactive mode, for agent/routine callers (see § Agent &
+  routine invocation). With `--auto` the run never asks the user anything: a
+  missing idea (no argument and no `--file`) stops the run with
+  `error: --auto requires an idea argument or --file` instead of asking, and
+  charter capture derives without confirming (§1a). Wherever this skill says
+  "non-interactive run", the trigger is `--auto`; without the flag the run is
+  interactive.
 - **Timeout:** per peer call, default **120s** (`--timeout`).
 - **Run folder:** create `runs/<YYYYMMDD-HHMMSS>/` under the current working
   directory and use it for every prompt file, snapshot, and output below. All peer
   Bash calls use this folder as their working directory (see `references/peers.md`
   § Security). Write the original idea to `runs/<ts>/idea-v0.md`.
 
-### 1a. Charter capture (the fidelity anchor — carry through the whole run)
+### 1a. Charter capture (the fidelity anchor — frozen for the whole run)
 
 The **charter** is the seed's immutable core. It anchors every later round so a
-critique can't silently steer the idea onto a different problem or a different bet.
-It has exactly two parts (scope/breadth is deliberately **not** in it — narrowing a
-platform to one workflow is legitimate convergence, not drift):
+critique can't silently steer the idea onto a different problem or a different
+approach. Both sections are **1–2 sentences each** — short, fixed text is what the
+off-problem and approach-threat tests anchor to (the referent is the charter's
+sentences, not a concept). Scope/breadth is deliberately **not** in it — narrowing
+a platform to one workflow is legitimate convergence, not drift.
 
-- **Problem** — the pain/need the idea exists to serve (one sentence).
-- **Thesis** — the central bet: *how* it wins and *why* it is defensible, named at
-  the **mechanism** level (the moat/flywheel/wedge), not just the topic. "A reuse
-  platform" is a topic; "a cross-customer ML effectiveness-discriminator flywheel as
-  the moat" is a thesis.
+- **Problem** — the pain/need the idea exists to serve (1–2 sentences).
+  **Frozen: never rewritten by anyone during the run.** Every revision reproduces
+  it verbatim as its first section (§4d).
+- **Approach** — *how* the idea wins and *why* it is defensible, named at the
+  **mechanism** level (the moat/flywheel/wedge), not just the topic
+  (1–2 sentences). "A reuse platform" is a topic; "a cross-customer ML
+  effectiveness-discriminator flywheel as the moat" is an approach. Challenges to
+  it are defended by the resolver (§4b′) and recorded in `summary.md` for the user
+  to act on between runs.
 
 Procedure:
 
-1. Distill `{problem, thesis}` from `idea-v0.md` in plain language. If the seed has
-   no discernible thesis (a brain-dump of unresolved concerns), **ask the user to
-   state the bet** rather than inventing one.
-2. **Confirm before the loop.** In an interactive run, show the drafted charter and
-   let the user correct it (the charter is load-bearing — a mis-stated thesis anchors
-   the gate on the wrong thing). In a non-interactive run, derive it, mark it
-   `unconfirmed`, and log that confirmation was skipped.
-3. Freeze it to `runs/<ts>/charter.md` (a `## Problem` and a `## Thesis` section).
-4. **Inject the charter** (fenced) into every critic turn (§4a), every resolver turn
-   (§4d), and every peer critique/proposal call for the rest of the run. It is
-   re-derived only when the user **accepts** a shift (§4b′).
+1. Distill `{problem, approach}` from `idea-v0.md` in plain language, 1–2
+   sentences each. If the seed has no discernible approach (a brain-dump of
+   unresolved concerns), **ask the user to state it** rather than inventing one —
+   except in an `--auto` run: never ask; derive the most plausible Approach
+   best-effort and mark the charter `unconfirmed (derived)`.
+2. **Confirm before the loop — after this, the run never asks the user
+   anything.** (Step 1's ask-for-the-approach, when it fires, belongs to this
+   same pre-loop charter-capture pause; the debate loop itself is
+   zero-interaction.) In an interactive
+   run, show the drafted charter and let the user correct it (a mis-drafted
+   charter anchors the whole zero-interaction run on the wrong thing). In a
+   non-interactive run (`--auto`), derive it, mark it `unconfirmed` (or
+   `unconfirmed (derived)` when the Approach was invented per step 1), and log
+   that confirmation was skipped.
+3. Freeze it to `runs/<ts>/charter.md` (a `## Problem` and an `## Approach`
+   section).
+4. **Inject the charter** (fenced) into every critic turn (§4a), every resolver
+   turn (§4d), and every peer critique/proposal call for the rest of the run. It
+   is **never re-derived mid-run**.
 
 ### 2. Connection test
 
@@ -158,45 +189,47 @@ questions** (as opposed to a clean idea statement):
 - Otherwise build the critique list for the resolver: one bullet per parsed critique
   as `- (<model>) <critique>`, plus `- (<model>, unstructured) <raw>` for each
   succeeded-but-unparseable critic. If there are none, use `(no specific critiques)`.
-  `charter_threats` are **not** in this list — they are gated below in §4b′ and reach
-  the resolver only via the gate's outcome.
+  `charter_threats` are **not** in this list — they are gated below in §4b′ and, when
+  the gate fires, reach the resolver as a labelled threats-to-defend block, never as
+  ordinary critiques.
+- **Problem-relevance screen (coordinator):** judge every item in the critique list
+  (including unstructured ones) against `charter.md`'s `## Problem`. Remove each
+  off-problem item (see § Definitions), log it as
+  `! discarded off-problem (<model>): <critique>`, and record it for §5b. Never ask
+  the user — the coordinator judges alone.
+- If the screen empties the list **and** this round has no clarifications and no
+  approach threats, skip §4c–§4d entirely — the idea carries forward unchanged into
+  §4e. The convergence quorum is unaffected: a `constructive: true` verdict still
+  blocks convergence even when all its critiques were discarded (the next round's
+  critics re-judge).
 
-#### 4b′. Charter gate (fidelity anchor — the user steers any shift off the seed)
+#### 4b′. Approach gate (autonomous — the resolver defends, the user reads the record)
 
-Union the `charter_threats` from all parsed verdicts this round. If the set is empty,
-set `defense_directive = none` and continue to §4c. Otherwise a shift off the
-charter's **problem or thesis** has been detected — do **not** resolve it silently:
+Union the `charter_threats` from all parsed verdicts this round. If the set is
+empty, set `defense_directive = none` and continue to §4c. Otherwise a challenge to
+the charter's **Approach** has been detected. Never pause — the loop is
+zero-interaction after charter confirmation (§1a):
 
-- **Non-interactive run (no synchronous user):** **hold the charter.** Set
-  `defense_directive = hold`, record the shift event (see below) with outcome
-  `held`, and continue to §4c. The resolver (§4d) keeps the thesis and notes the
-  threat unresolved; the run surfaces it in `summary.md` (§5b) for the user to decide
-  later. Never silent-accept and never silent-pivot.
-- **Interactive run:** pause and present the threatening point(s) and which charter
-  element each targets (problem / thesis). Ask the user to steer (blocking question):
-  - **Accept the shift** → then ask *Continue or sign off?*
-    - **Continue** → the user has endorsed the new direction. Append the accepted
-      threats to the resolver's critique list (so the resolver actually makes the
-      shift), set `defense_directive = none`, **re-derive the charter** to the new
-      direction (§1a procedure, overwrite `charter.md`), record outcome
-      `accepted-continue`, and continue to §4c.
-    - **Sign off** → stop the loop now with reason `charter_signoff`; the current
-      idea (this round's input, not yet re-resolved) is final. Record outcome
-      `accepted-signoff` and go to §5.
-  - **Defend manually** → capture the user's rebuttal text; set
-    `defense_directive = manual:<text>`; record outcome `defended-manual`; continue
-    to §4c. The thesis is held.
-  - **Resolver defends** → set `defense_directive = resolver`; record outcome
-    `defended-resolver`; continue to §4c. The thesis is held. If a later round
-    re-raises the same shift, this gate fires again.
-- **Record the shift event** (for §5b) regardless of branch: `{round, elements
-  (problem/thesis), threats (verbatim), outcome}`.
+- Set `defense_directive = resolver` and append the threats to the resolver's
+  critique context as a labelled block —
+  `Approach threats to defend (do not treat as ordinary critiques):` followed by
+  one bullet per threat as `- (<model>) <threat>`. The resolver (§4d) writes a
+  principled defense and keeps the Approach.
+- **Record the shift event** (for §5b): `{round, threats (verbatim, attributed),
+  outcome: defended-resolver}`.
+- The charter is never re-derived mid-run. If a later round re-raises the same
+  threat, this gate fires again — a convincing defense is what stops the re-raise
+  and lets the loop converge. The user weighs the recorded threats after the run
+  (`summary.md` § Charter & shifts) and re-seeds a new run if an approach change
+  is warranted.
 
-#### 4c. Clarifications (optional)
+#### 4c. Clarifications (logged, never asked)
 
-- Collect `clarifications` from all parsed verdicts. If any and the run is
-  interactive, ask the user and append `Clarifications from the author:` + the Q/A
-  to the critique context. In non-interactive runs, log that they were skipped.
+- Collect `clarifications` from all parsed verdicts. Never ask the user — the loop
+  is zero-interaction. Log each as `! clarification (unasked) (<model>): <question>`
+  and record it for §5b. Clarifications still block convergence (quorum unchanged),
+  which pressures critics to resolve them from the idea text in later rounds or
+  drop them.
 
 #### 4d. Resolve (peers propose, owner synthesizes)
 
@@ -211,18 +244,30 @@ charter's **problem or thesis** has been detected — do **not** resolve it sile
   with the round's directive from §4b′), and seed a generic subagent (via Task) with the
   result. It returns the full revised idea + `---DISPOSITION---` + per-critique
   disposition. Split on `---DISPOSITION---`.
-- The `defense_directive` governs how the resolver treats the charter (the resolver
-  prompt defines each value):
-  - `none` — normal resolve; address the critique list within the charter's bet.
-    (When the gate set this via **accept-continue**, the accepted shift is already in
-    the critique list and the charter was re-derived, so "within the bet" now means
-    the new direction.)
-  - `manual:<text>` — fold the user's rebuttal in as the authoritative defense; keep
-    the thesis.
-  - `resolver` — write a principled defense of the thesis against the threat; keep the
-    thesis.
-  - `hold` — keep the thesis and note the threat unresolved in the disposition.
-- If the resolver fails, stop with reason `resolve_failed` (retain the prior idea).
+- The `defense_directive` governs how the resolver treats the Approach (the
+  resolver prompt defines each value):
+  - `none` — normal resolve; address the critique list within the charter's
+    Approach.
+  - `resolver` — defend the Approach against the round's threats (appended to the
+    critique context by §4b′ under the `Approach threats to defend` label) and
+    keep it.
+- If the resolver call fails, stop with reason `resolve_failed` (retain the prior
+  idea).
+- **Problem-drift check (coordinator), before accepting the revision:**
+  1. **Mechanical:** the revised idea must begin with the charter's `## Problem`
+     section, matching `charter.md`'s verbatim (whitespace-normalized). Missing or
+     changed ⇒ drift.
+  2. **Judgment backstop:** if the echo matches, read the body once — if it no
+     longer serves the Problem (the echo as camouflage), that is drift too.
+
+  On drift, re-run this §4d synthesis **once**, appending to the critique context:
+  `Corrective note: your previous revision drifted off the frozen ## Problem —
+  <one line naming the drift>. Revise again: reproduce the ## Problem section
+  verbatim and keep the idea serving it.` If the retry still drifts: discard the
+  revision, keep the prior idea as current, log
+  `! revision discarded (off-problem drift) — prior idea retained`, record the
+  event for §5b, and continue to §4e. Drift is never `resolve_failed` (that reason
+  stays reserved for failed calls).
 - Otherwise set the current idea to the revised idea and snapshot it as
   `runs/<ts>/idea-v<n>.md`. Record the round's critiques + disposition.
 
@@ -235,16 +280,14 @@ charter's **problem or thesis** has been detected — do **not** resolve it sile
 
 The loop produces a deliverable (`final-idea.md`) and a process record (`summary.md`).
 Run the finalize step first, then write both files. This runs for **every** stop reason
-(`converged`, `K-rounds`, `resolve_failed`, `charter_signoff`) and for the
-no-reachable-peers single-model case — always from whatever the current idea is at loop
-end. For `charter_signoff` the final idea is the loop's current idea (the round that
-triggered sign-off did not re-resolve).
+(`converged`, `K-rounds`, `resolve_failed`) and for the no-reachable-peers
+single-model case — always from whatever the current idea is at loop end.
 
 #### 5a. Finalize (owner synthesizes the deliverable)
 
 - Collect the **rejected** critiques across all rounds from the per-round dispositions
   recorded in §4d (the ordinary critiques that were raised but left unresolved).
-  **Charter shift events (§4b′) are not passed to the finalizer** — they are process
+  **Approach-threat events (§4b′) and off-problem discards are not passed to the finalizer** — they are process
   record, kept out of the deliverable and written only to `summary.md` (§5b).
 - Read `references/prompts/finalizer.md`, substitute its slots (`{idea}` with the
   current/final idea, `{unresolved_critiques}` with that list of unresolved critiques),
@@ -267,12 +310,20 @@ permitted contents:
 - Header: participating models, stop reason, and a pointer to `final-idea.md` as the
   deliverable.
 - `## Original idea` — the seed.
-- `## Charter & shifts` — the (final) charter (problem + thesis, noting `unconfirmed`
-  if it was never confirmed), then every charter shift event from §4b′ in order:
-  `round`, the element(s) targeted (problem / thesis), the threat(s) verbatim, and the
-  outcome (`accepted-continue` / `accepted-signoff` / `defended-manual` /
-  `defended-resolver` / `held`). If the gate never fired, say "no charter shifts —
-  the idea stayed on its seed." Held shifts live **here only**, not in `final-idea.md`.
+- `## Charter & shifts` — the charter (Problem + Approach, noting `unconfirmed`
+  if it was never confirmed, and `unconfirmed (derived)` if the Approach was also
+  derived unattended in an `--auto` run), then every charter shift event from §4b′
+  in order: `round`, the threat(s) verbatim (attributed by model),
+  and the outcome (always `defended-resolver`). If the gate never fired, say "no
+  approach threats — the idea stayed on its seed." This section is where the user
+  decides, **after** the run, whether a threat deserves a re-seeded Approach.
+  Threats live **here only**, not in `final-idea.md`.
+- `## Off-problem discards` — one line per discarded critique
+  (`round, model, critique, layer that caught it: resolver / coordinator` — the
+  critic layer self-filters silently before the verdict, so its drops never
+  reach the coordinator and are not line items),
+  one line per discarded revision or corrective retry from the §4d drift check, and
+  one line per unasked clarification (`round, model, question`); or "none".
 - `## Round-by-round evolution` — for each round: the critiques raised (attributed by
   model) and the resolver's disposition for each (addressed / rejected), or "Converged:
   no constructive critiques", or "Resolve step failed; prior idea retained".
@@ -288,10 +339,40 @@ polished idea (from `final-idea.md`).
 
 ## Acceptance check
 
-On a held-out seed idea, a before/after read of `final-idea.md` should confirm the final
-idea is more complete / specific than the seed **and still serves the charter's problem
-and thesis** — any move off the seed's bet should appear in `summary.md`'s
-`## Charter & shifts` as a user-steered event (`accepted-*`, `defended-*`, or `held`),
-never as a silent pivot. To customize behavior, edit the single-source role prompts in
-`references/prompts/{critic,resolver,finalizer}.md` (the critic prompt is referenced,
-not re-inlined, by `references/peers.md`).
+On a held-out seed idea, a before/after read of `final-idea.md` should confirm the
+final idea is more complete / specific than the seed, **begins with the charter's
+`## Problem` verbatim**, and still serves that Problem within its `## Approach`.
+After charter confirmation the run must complete with **zero further prompts to the
+user**: approach threats appear in `summary.md` § Charter & shifts as
+`defended-resolver` events, tangents in § Off-problem discards, clarifications as
+unasked log lines — never as silent pivots or mid-run questions. To customize
+behavior, edit the single-source role prompts in
+`references/prompts/{critic,resolver,finalizer}.md` (the critic prompt is
+referenced, not re-inlined, by `references/peers.md`).
+
+## Agent & routine invocation
+
+Other agents and scheduled routines call this skill **headlessly**. The
+coordinator must run as the main agent — its critic/resolver turns spawn Task
+subagents, and subagents cannot spawn nested subagents — so callers shell out
+rather than Task-spawning the skill:
+
+```
+claude -p "/idea-polish --file idea.md --auto [--rounds N] [--peers ...]"
+```
+
+Run it from the directory where `runs/` should land. With `--auto` the run never
+prompts a human (§1); the charter is derived unconfirmed (§1a) and every gate is
+autonomous (§4b′, §4c).
+
+**Prerequisite:** the plugin must be installed in the calling environment
+(README § Install) — an uninstalled plugin fails immediately with
+`Unknown command: /idea-polish`.
+
+**Output contract for callers:** the final message names
+`runs/<ts>/final-idea.md` and `runs/<ts>/summary.md` and prints the polished
+idea — a calling agent consumes stdout or reads the two files.
+
+**Routine wiring example:** a scheduled routine whose prompt is — for each file
+in `ideas/inbox/`, run `claude -p "/idea-polish --file <that file> --auto"`,
+then move the processed file to `ideas/done/`.
