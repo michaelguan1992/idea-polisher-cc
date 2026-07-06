@@ -18,8 +18,9 @@ the resolver, recorded in `summary.md`, and left to the user to act on between r
 confirmation, the run never pauses for the user: the coordinator judges
 off-problem discards itself, approach threats are resolver-defended (no gate
 menu), and critic clarification requests are logged, never asked. The user steers
-at two points only: confirming the charter before the loop, and reading
-`summary.md` after it.
+at two points only: the pre-loop charter capture (confirming the draft, and — for
+a seed with no discernible approach — stating the Approach when asked), and
+reading `summary.md` after it.
 
 Motivating gap: today the critic is *asked* to classify against the charter and the
 resolver is *asked* to stay anchored, but nothing verifies either, and the

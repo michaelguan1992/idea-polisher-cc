@@ -116,7 +116,10 @@ Procedure:
    unresolved concerns), **ask the user to state it** rather than inventing one —
    except in an `--auto` run: never ask; derive the most plausible Approach
    best-effort and mark the charter `unconfirmed (derived)`.
-2. **Confirm before the loop — the run's only user pause.** In an interactive
+2. **Confirm before the loop — after this, the run never asks the user
+   anything.** (Step 1's ask-for-the-approach, when it fires, belongs to this
+   same pre-loop charter-capture pause; the debate loop itself is
+   zero-interaction.) In an interactive
    run, show the drafted charter and let the user correct it (a mis-drafted
    charter anchors the whole zero-interaction run on the wrong thing). In a
    non-interactive run (`--auto`), derive it, mark it `unconfirmed` (or
@@ -316,7 +319,9 @@ permitted contents:
   decides, **after** the run, whether a threat deserves a re-seeded Approach.
   Threats live **here only**, not in `final-idea.md`.
 - `## Off-problem discards` — one line per discarded critique
-  (`round, model, critique, layer that caught it: critic / resolver / coordinator`),
+  (`round, model, critique, layer that caught it: resolver / coordinator` — the
+  critic layer self-filters silently before the verdict, so its drops never
+  reach the coordinator and are not line items),
   one line per discarded revision or corrective retry from the §4d drift check, and
   one line per unasked clarification (`round, model, question`); or "none".
 - `## Round-by-round evolution` — for each round: the critiques raised (attributed by
