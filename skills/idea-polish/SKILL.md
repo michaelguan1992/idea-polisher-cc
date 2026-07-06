@@ -58,7 +58,8 @@ prompt templates, and the security posture.
 ### 1. Intake
 
 - **Idea:** from the command argument; else from a `--file <path>` argument; else
-  ask the user for it.
+  ask the user for it (in an `--auto` run, stop instead with
+  `error: --auto requires an idea argument or --file`).
 - **K (max rounds):** `--rounds N`, default **10**.
 - **Owner:** default `claude` (the host). A non-Claude owner is out of scope for v1.
 - **Peers:** resolve the effective peer set from `references/peers.md` § Peer roster
@@ -76,6 +77,13 @@ prompt templates, and the security posture.
   is exactly the reachable default-on peers — identical to prior behavior.
 - **`--resolve-first`:** if present, skip entry classification and resolve before the
   first critique.
+- **`--auto`:** non-interactive mode, for agent/routine callers (see § Agent &
+  routine invocation). With `--auto` the run never asks the user anything: a
+  missing idea (no argument and no `--file`) stops the run with
+  `error: --auto requires an idea argument or --file` instead of asking, and
+  charter capture derives without confirming (§1a). Wherever this skill says
+  "non-interactive run", the trigger is `--auto`; without the flag the run is
+  interactive.
 - **Timeout:** per peer call, default **120s** (`--timeout`).
 - **Run folder:** create `runs/<YYYYMMDD-HHMMSS>/` under the current working
   directory and use it for every prompt file, snapshot, and output below. All peer
@@ -105,12 +113,15 @@ Procedure:
 
 1. Distill `{problem, approach}` from `idea-v0.md` in plain language, 1–2
    sentences each. If the seed has no discernible approach (a brain-dump of
-   unresolved concerns), **ask the user to state it** rather than inventing one.
+   unresolved concerns), **ask the user to state it** rather than inventing one —
+   except in an `--auto` run: never ask; derive the most plausible Approach
+   best-effort and mark the charter `unconfirmed (derived)`.
 2. **Confirm before the loop — the run's only user pause.** In an interactive
    run, show the drafted charter and let the user correct it (a mis-drafted
    charter anchors the whole zero-interaction run on the wrong thing). In a
-   non-interactive run, derive it, mark it `unconfirmed`, and log that
-   confirmation was skipped.
+   non-interactive run (`--auto`), derive it, mark it `unconfirmed` (or
+   `unconfirmed (derived)` when the Approach was invented per step 1), and log
+   that confirmation was skipped.
 3. Freeze it to `runs/<ts>/charter.md` (a `## Problem` and an `## Approach`
    section).
 4. **Inject the charter** (fenced) into every critic turn (§4a), every resolver
@@ -296,9 +307,10 @@ permitted contents:
 - Header: participating models, stop reason, and a pointer to `final-idea.md` as the
   deliverable.
 - `## Original idea` — the seed.
-- `## Charter & shifts` — the charter (Problem + Approach, noting `unconfirmed` if
-  it was never confirmed; frozen for the run by design), then every approach-threat
-  event from §4b′ in order: `round`, the threat(s) verbatim (attributed by model),
+- `## Charter & shifts` — the charter (Problem + Approach, noting `unconfirmed`
+  if it was never confirmed, and `unconfirmed (derived)` if the Approach was also
+  derived unattended in an `--auto` run), then every charter shift event from §4b′
+  in order: `round`, the threat(s) verbatim (attributed by model),
   and the outcome (always `defended-resolver`). If the gate never fired, say "no
   approach threats — the idea stayed on its seed." This section is where the user
   decides, **after** the run, whether a threat deserves a re-seeded Approach.
