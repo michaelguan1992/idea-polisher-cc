@@ -24,7 +24,8 @@ and use NO delimiter lines.
 Structure:
 
 - The polished idea, self-contained and ready to stand on its own (keep the idea's own
-  headings if it has them).
+  headings if it has them). The idea's leading `## Problem` section is its frozen
+  anchor: reproduce it verbatim, unedited, as the first section of the deliverable.
 - ## Risks — the material risks to this idea succeeding.
 - ## Open Concerns — the unresolved critiques above, framed as concerns the reader should
   weigh. If there are none, say so plainly rather than inventing concerns.
