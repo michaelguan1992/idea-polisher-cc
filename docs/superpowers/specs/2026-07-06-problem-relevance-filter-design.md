@@ -10,8 +10,16 @@ manifests, no code.
 
 During the debate, every critique and every refined idea must serve the charter's
 stated **Problem**. Off-problem tangents are discarded in that round (and logged),
-never acted on. The Problem is **immutable for the whole run**; the **Approach**
-(renamed from "Thesis") can evolve, but only through the user via the existing gate.
+never acted on. The Problem is **immutable for the whole run**. The **Approach**
+(renamed from "Thesis") is held during the run: threats against it are defended by
+the resolver, recorded in `summary.md`, and left to the user to act on between runs.
+
+**The debate loop is zero-interaction.** After the single pre-loop charter
+confirmation, the run never pauses for the user: the coordinator judges
+off-problem discards itself, approach threats are resolver-defended (no gate
+menu), and critic clarification requests are logged, never asked. The user steers
+at two points only: confirming the charter before the loop, and reading
+`summary.md` after it.
 
 Motivating gap: today the critic is *asked* to classify against the charter and the
 resolver is *asked* to stay anchored, but nothing verifies either, and the
@@ -33,9 +41,14 @@ see § Gate below. Prose may say "approach threat"; the JSON key never changes.
 
 - `## Problem` and `## Approach` are each constrained to **1–2 sentences** at
   capture time (short fixed text is what makes text-anchored classification
-  workable). User confirmation flow is unchanged.
-- The Problem is **frozen for the run**. It is never re-derived — including at the
-  gate. Only the Approach can be re-derived on an accepted shift.
+  workable). Interactive confirmation stays and is the run's **only** user pause —
+  it is load-bearing, since a mis-drafted Problem anchors the whole autonomous run
+  on the wrong thing. Non-interactive derivation (`unconfirmed`) is unchanged.
+- The charter is **frozen for the run** — both sections. The Problem is never
+  rewritten by anyone; the Approach is never re-derived mid-run either (the old
+  accept-a-shift branch is interactive and is removed, see § Gate). Approach
+  changes happen between runs: the user reads the recorded threats in
+  `summary.md` and re-seeds.
 
 ## New definitions (SKILL.md § Definitions, mirrored in prompts)
 
@@ -48,9 +61,9 @@ concept like "the core bet":
   A critique whose remedy is "solve a different problem" is off-problem.
 - **Approach threat** (carried in the `charter_threats` JSON key): a critique whose
   fix would require **rewriting the `## Approach` sentence(s)**. These are
-  on-problem challenges to how the idea wins; they route to the §4b′ gate exactly
-  as charter threats do today. Problem shifts are no longer gate material — they
-  are off-problem discards.
+  on-problem challenges to how the idea wins; they route to the §4b′ gate, which
+  now resolves them autonomously (see § Gate). Problem shifts are not gate
+  material — they are off-problem discards.
 
 ## Enforcement — three layers
 
@@ -70,9 +83,10 @@ one above. Verdict JSON shape unchanged.
   `## Problem` section reproduced **verbatim, unedited**. The resolver may never
   modify it. This makes `final-idea.md` self-anchoring and gives the coordinator a
   mechanical drift check.
-- "Stay within the bet" language is re-anchored to the Approach; the
-  defense-directive semantics (`none` / `manual:<text>` / `resolver` / `hold`)
-  are unchanged apart from wording.
+- "Stay within the bet" language is re-anchored to the Approach. The
+  defense-directive values narrow to `none` (normal resolve) and `resolver`
+  (defend the Approach against this round's threats and keep it); `manual:<text>`
+  and `hold` are removed with the interactive gate.
 
 ### Layer 3: coordinator (SKILL.md)
 
@@ -99,24 +113,43 @@ appended to the critique context. If the retry still drifts: discard the revisio
 keep the prior idea as current, record the event, and continue to the next round.
 Drift is never `resolve_failed` (that reason stays reserved for call failures).
 
-### Gate (§4b′) — approach-only
+### Gate (§4b′) — approach-only, autonomous
 
-The gate now handles **approach threats only**. Changes:
+The gate now handles **approach threats only** and never pauses:
 
-- The "which charter element each targets (problem / thesis)" presentation drops
-  the problem case; threats target the Approach.
-- **Accept-continue** re-derives **only the `## Approach` section** of
-  `charter.md`; the `## Problem` is never rewritten.
-- All other branches (accept-signoff, defend-manual, defend-resolver,
-  non-interactive hold) unchanged apart from terminology.
+- If the round's union of `charter_threats` is non-empty, set
+  `defense_directive = resolver` — the resolver writes a principled defense of the
+  Approach and keeps it. If the defense satisfies the critics, later rounds stop
+  raising the threat and the loop can converge; a re-raised threat just fires the
+  gate again.
+- Record every shift event as before (`{round, threats verbatim, outcome:
+  defended-resolver}`) for `summary.md`.
+- The interactive branches (**accept-continue**, **accept-signoff**,
+  **defend-manual**) and the **hold** directive are removed, along with the
+  `charter_signoff` stop reason and mid-run charter re-derivation. Remaining stop
+  reasons: `converged`, `K-rounds`, `resolve_failed`. The resolver prompt's
+  `defense_directive` values narrow to `none` / `resolver`.
+
+### Clarifications (§4c) — never asked
+
+Critic `clarifications` are logged (and recorded in `summary.md`) in every run;
+the interactive ask is removed. They still block convergence per the unchanged
+quorum, which pressures critics to resolve them from the idea text in later
+rounds or drop them.
 
 ## Output changes (§5)
 
 - `summary.md` gains `## Off-problem discards`: one line per discarded critique
   (`round, model, critique, layer that caught it`) and one line per discarded
   revision/retry event; or `none`. Process record only — never idea content.
-- `## Charter & shifts` renders the Problem/Approach terms and notes the Problem
-  is frozen by design.
+- `## Charter & shifts` renders the Problem/Approach terms, notes the charter is
+  frozen by design, and lists each approach threat with its resolver defense
+  (outcome is always `defended-resolver`); this is where the user decides, after
+  the run, whether a threat deserves a re-seeded Approach.
+- Logged-but-unasked clarifications get their own line items in the process
+  record.
+- §5's stop-reason enumeration drops `charter_signoff` everywhere it appears
+  (finalize step, summary fields).
 - `final-idea.md` now begins with the verbatim `## Problem` (a consequence of the
   echo, not a new finalizer rule); the finalizer prompt's "still serves the
   charter's problem" self-check language is re-anchored to the frozen sentence.
@@ -135,8 +168,10 @@ The gate now handles **approach threats only**. Changes:
 The `idea_polisher` CLI reference gates problem *and* thesis shifts and has no
 relevance filter, no verbatim echo, and no Problem/Approach terminology. This
 design diverges on purpose (user decision, this spec): frozen Problem,
-approach-only gate, three-layer relevance filter. Record this divergence in the
-repo docs when implementing; do not port it back silently.
+approach-only autonomous gate (resolver-defends, no interactive branches, no
+`charter_signoff`), never-asked clarifications, three-layer relevance filter.
+Record this divergence in the repo docs when implementing; do not port it back
+silently.
 
 ## Error handling summary
 
@@ -157,3 +192,6 @@ Run `/idea-polish` on `examples/sample-idea.md` before and after. Verify:
    idea content.
 4. Seeding an idea with an obvious tangent critique embedded (resolve-first path)
    produces a logged discard, not a pivot.
+5. After charter confirmation, the run completes with zero further prompts to the
+   user; any approach threats appear in `## Charter & shifts` as
+   `defended-resolver`.
