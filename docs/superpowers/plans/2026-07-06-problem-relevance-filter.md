@@ -477,8 +477,8 @@ New text:
 
 - [ ] **Step 6: Verify**
 
-Run: `sed -n '/#### 4a/,/### 5/p' skills/idea-polish/SKILL.md | grep -ciE "thesis|manual:|hold|interactive run"`
-Expected: `0`
+Run: `sed -n '/#### 4a/,/### 5/p' skills/idea-polish/SKILL.md | grep -ciE "\bthesis\b|manual:|\bhold\b|interactive run"`
+Expected: `0` (word boundaries: "Synthesis" is a legitimate §4d term, not a "thesis" leftover)
 
 - [ ] **Step 7: Commit**
 
@@ -563,8 +563,8 @@ referenced, not re-inlined, by `references/peers.md`).
 
 - [ ] **Step 5: Verify (whole-file sweep)**
 
-Run: `grep -ciE "thesis|charter_signoff|accepted-continue|defended-manual|held\b" skills/idea-polish/SKILL.md`
-Expected: `0`
+Run: `grep -ciE "\bthesis\b|charter_signoff|accepted-continue|defended-manual|\bheld\b" skills/idea-polish/SKILL.md`
+Expected: `0` (word boundaries: "Synthesis" is a legitimate §4d term)
 Run: `grep -c "Off-problem discards" skills/idea-polish/SKILL.md`
 Expected: `2` (§5b definition + acceptance check mention)
 
