@@ -360,6 +360,10 @@ Run it from the directory where `runs/` should land. With `--auto` the run never
 prompts a human (§1); the charter is derived unconfirmed (§1a) and every gate is
 autonomous (§4b′, §4c).
 
+**Prerequisite:** the plugin must be installed in the calling environment
+(README § Install) — an uninstalled plugin fails immediately with
+`Unknown command: /idea-polish`.
+
 **Output contract for callers:** the final message names
 `runs/<ts>/final-idea.md` and `runs/<ts>/summary.md` and prints the polished
 idea — a calling agent consumes stdout or reads the two files.

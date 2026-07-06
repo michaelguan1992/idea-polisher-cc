@@ -73,8 +73,10 @@ claude -p "/idea-polish --file idea.md --auto"
 ```
 
 The final message names `runs/<ts>/final-idea.md` and `runs/<ts>/summary.md` and
-prints the polished idea. See `skills/idea-polish/SKILL.md` § Agent & routine
-invocation for the full contract.
+prints the polished idea. The plugin must be installed in the calling
+environment (see Install above) — otherwise `claude -p` fails with
+`Unknown command: /idea-polish`. See `skills/idea-polish/SKILL.md` § Agent &
+routine invocation for the full contract.
 
 ### Adding a model
 
