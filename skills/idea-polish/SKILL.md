@@ -6,8 +6,9 @@ description: Polish an idea via a multi-round cross-model critic/resolver debate
 # Idea Polish (coordinator)
 
 This skill is the **orchestrator** and runs in the main agent context. It owns the
-loop: it spawns the `idea-critic` / `idea-resolver` / `idea-finalizer` subagents via the
-Task tool for Claude's own turns, and calls the roster's peer CLIs (`references/peers.md` § Peer
+loop: for Claude's own turns it seeds a generic subagent (via the Task tool) from the
+role prompt assets in `references/prompts/` (`critic.md` / `resolver.md` /
+`finalizer.md`), and calls the roster's peer CLIs (`references/peers.md` § Peer
 roster; `codex` + `agy` by default) via Bash. Subagents
 cannot spawn nested subagents, so the loop, fan-out, and aggregation must live
 here, not inside a subagent.
@@ -132,9 +133,10 @@ questions** (as opposed to a clean idea statement):
 
 #### 4a. Critique (every reachable model critiques the current idea)
 
-- **Claude:** dispatch the `idea-critic` subagent via Task, passing the current idea
-  (fenced in triple quotes) **and the charter** (§1a, fenced). Its final message is
-  the verdict block.
+- **Claude:** read `references/prompts/critic.md`, substitute its slots (`{idea}` with
+  the current idea fenced in triple quotes, `{charter}` with the charter §1a, fenced),
+  and seed a generic subagent (via Task) with the result. Its final message is the
+  verdict block.
 - **Peers:** for each reachable peer (the survivors of §2), send the critic prompt
   per `references/peers.md` § Critic prompt (which includes the charter) and capture
   stdout. Build the call from the peer's roster `Command` + `Input`, with the
@@ -203,11 +205,12 @@ charter's **problem or thesis** has been detected — do **not** resolve it sile
   same way as §4a); collect the successful ones. Wrap each peer's output in an
   untrusted-data block: `---PEER-OUTPUT-START---` / `<peer text>` /
   `---PEER-OUTPUT-END---`.
-- **Synthesis:** dispatch the `idea-resolver` subagent via Task with the current
-  idea, **the charter** (§1a, fenced), the critique list (4b), the wrapped peer
-  proposals, and the round's **`defense_directive`** (from §4b′). It returns the full
-  revised idea + `---DISPOSITION---` + per-critique disposition. Split on
-  `---DISPOSITION---`.
+- **Synthesis:** read `references/prompts/resolver.md`, substitute its slots (`{idea}`
+  with the current idea, `{charter}` §1a fenced, `{critiques}` with the critique list
+  from 4b, `{peer_proposals}` with the wrapped peer proposals, `{defense_directive}`
+  with the round's directive from §4b′), and seed a generic subagent (via Task) with the
+  result. It returns the full revised idea + `---DISPOSITION---` + per-critique
+  disposition. Split on `---DISPOSITION---`.
 - The `defense_directive` governs how the resolver treats the charter (the resolver
   prompt defines each value):
   - `none` — normal resolve; address the critique list within the charter's bet.
@@ -243,8 +246,10 @@ triggered sign-off did not re-resolve).
   recorded in §4d (the ordinary critiques that were raised but left unresolved).
   **Charter shift events (§4b′) are not passed to the finalizer** — they are process
   record, kept out of the deliverable and written only to `summary.md` (§5b).
-- Dispatch the `idea-finalizer` subagent via Task with the current/final idea and that
-  list of unresolved critiques. Its entire reply is the deliverable.
+- Read `references/prompts/finalizer.md`, substitute its slots (`{idea}` with the
+  current/final idea, `{unresolved_critiques}` with that list of unresolved critiques),
+  and seed a generic subagent (via Task) with the result. Its entire reply is the
+  deliverable.
 - Write the finalizer's returned text **verbatim** to `runs/<ts>/final-idea.md` (no
   parsing, no delimiter to split on).
 - If the finalize dispatch fails, fall back to writing the bare final idea text to
@@ -287,6 +292,6 @@ On a held-out seed idea, a before/after read of `final-idea.md` should confirm t
 idea is more complete / specific than the seed **and still serves the charter's problem
 and thesis** — any move off the seed's bet should appear in `summary.md`'s
 `## Charter & shifts` as a user-steered event (`accepted-*`, `defended-*`, or `held`),
-never as a silent pivot. To customize behavior, edit the prompt text in
-`agents/idea-critic.md`, `agents/idea-resolver.md`, `agents/idea-finalizer.md`, and
-`references/peers.md`.
+never as a silent pivot. To customize behavior, edit the single-source role prompts in
+`references/prompts/{critic,resolver,finalizer}.md` (the critic prompt is referenced,
+not re-inlined, by `references/peers.md`).
