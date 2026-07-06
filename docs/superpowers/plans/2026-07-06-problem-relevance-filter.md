@@ -563,8 +563,8 @@ referenced, not re-inlined, by `references/peers.md`).
 
 - [ ] **Step 5: Verify (whole-file sweep)**
 
-Run: `grep -ciE "\bthesis\b|charter_signoff|accepted-continue|defended-manual|\bheld\b" skills/idea-polish/SKILL.md`
-Expected: `0` (word boundaries: "Synthesis" is a legitimate §4d term)
+Run: `grep -ciE "\bthesis\b|charter_signoff|accepted-continue|defended-manual|\`held\`" skills/idea-polish/SKILL.md`
+Expected: `0` (word boundaries: "Synthesis" and "held-out" are legitimate phrases; the old gate outcome was always backticked as \`held\`)
 Run: `grep -c "Off-problem discards" skills/idea-polish/SKILL.md`
 Expected: `2` (§5b definition + acceptance check mention)
 
