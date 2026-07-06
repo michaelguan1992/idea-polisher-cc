@@ -85,7 +85,7 @@ block convergence), so keep the JSON well-formed and last.
 - [ ] **Step 2: Verify**
 
 Run: `grep -ci "thesis" skills/idea-polish/references/prompts/critic.md; grep -c "charter_threats" skills/idea-polish/references/prompts/critic.md; grep -c -- "---VERDICT-JSON---" skills/idea-polish/references/prompts/critic.md`
-Expected: `0`, `3`, `3` (grep -c exits 1 on the zero-count — that is the pass condition, not an error; the same applies to every `Expected: 0` check below).
+Expected: `0`, `3`, `4` (grep -c exits 1 on the zero-count — that is the pass condition, not an error; the same applies to every `Expected: 0` check below).
 
 - [ ] **Step 3: Commit**
 
