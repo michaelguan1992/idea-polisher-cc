@@ -344,3 +344,26 @@ unasked log lines — never as silent pivots or mid-run questions. To customize
 behavior, edit the single-source role prompts in
 `references/prompts/{critic,resolver,finalizer}.md` (the critic prompt is
 referenced, not re-inlined, by `references/peers.md`).
+
+## Agent & routine invocation
+
+Other agents and scheduled routines call this skill **headlessly**. The
+coordinator must run as the main agent — its critic/resolver turns spawn Task
+subagents, and subagents cannot spawn nested subagents — so callers shell out
+rather than Task-spawning the skill:
+
+```
+claude -p "/idea-polish --file idea.md --auto [--rounds N] [--peers ...]"
+```
+
+Run it from the directory where `runs/` should land. With `--auto` the run never
+prompts a human (§1); the charter is derived unconfirmed (§1a) and every gate is
+autonomous (§4b′, §4c).
+
+**Output contract for callers:** the final message names
+`runs/<ts>/final-idea.md` and `runs/<ts>/summary.md` and prints the polished
+idea — a calling agent consumes stdout or reads the two files.
+
+**Routine wiring example:** a scheduled routine whose prompt is — for each file
+in `ideas/inbox/`, run `claude -p "/idea-polish --file <that file> --auto"`,
+then move the processed file to `ideas/done/`.
