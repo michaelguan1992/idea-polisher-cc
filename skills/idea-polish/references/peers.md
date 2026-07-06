@@ -155,7 +155,7 @@ Idea:
 {idea}
 """
 
-Charter (the seed's original problem and core thesis — keep your fixes within this bet):
+Charter (the seed's frozen anchor — keep your fixes serving its `## Problem`, within its `## Approach`):
 """
 {charter}
 """
@@ -164,7 +164,8 @@ Critiques:
 {critiques}
 
 Propose concrete, specific fixes that address these critiques. Be brief and
-actionable. Keep your fixes within the charter's problem and thesis — improve the
-idea within its bet rather than proposing a different problem or moat. Do not rewrite
-the whole idea - just propose the fixes.
+actionable. Keep every fix serving the charter's `## Problem` within its
+`## Approach` — the Problem is frozen, so do not propose solving a different
+problem or swapping the Approach; skip any critique that would require it. Do
+not rewrite the whole idea - just propose the fixes.
 ```
