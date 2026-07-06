@@ -175,45 +175,47 @@ questions** (as opposed to a clean idea statement):
 - Otherwise build the critique list for the resolver: one bullet per parsed critique
   as `- (<model>) <critique>`, plus `- (<model>, unstructured) <raw>` for each
   succeeded-but-unparseable critic. If there are none, use `(no specific critiques)`.
-  `charter_threats` are **not** in this list — they are gated below in §4b′ and reach
-  the resolver only via the gate's outcome.
+  `charter_threats` are **not** in this list — they are gated below in §4b′ and, when
+  the gate fires, reach the resolver as a labelled threats-to-defend block, never as
+  ordinary critiques.
+- **Problem-relevance screen (coordinator):** judge every item in the critique list
+  (including unstructured ones) against `charter.md`'s `## Problem`. Remove each
+  off-problem item (see § Definitions), log it as
+  `! discarded off-problem (<model>): <critique>`, and record it for §5b. Never ask
+  the user — the coordinator judges alone.
+- If the screen empties the list **and** this round has no clarifications and no
+  approach threats, skip §4c–§4d entirely — the idea carries forward unchanged into
+  §4e. The convergence quorum is unaffected: a `constructive: true` verdict still
+  blocks convergence even when all its critiques were discarded (the next round's
+  critics re-judge).
 
-#### 4b′. Charter gate (fidelity anchor — the user steers any shift off the seed)
+#### 4b′. Approach gate (autonomous — the resolver defends, the user reads the record)
 
-Union the `charter_threats` from all parsed verdicts this round. If the set is empty,
-set `defense_directive = none` and continue to §4c. Otherwise a shift off the
-charter's **problem or thesis** has been detected — do **not** resolve it silently:
+Union the `charter_threats` from all parsed verdicts this round. If the set is
+empty, set `defense_directive = none` and continue to §4c. Otherwise a challenge to
+the charter's **Approach** has been detected. Never pause — the loop is
+zero-interaction after charter confirmation (§1a):
 
-- **Non-interactive run (no synchronous user):** **hold the charter.** Set
-  `defense_directive = hold`, record the shift event (see below) with outcome
-  `held`, and continue to §4c. The resolver (§4d) keeps the thesis and notes the
-  threat unresolved; the run surfaces it in `summary.md` (§5b) for the user to decide
-  later. Never silent-accept and never silent-pivot.
-- **Interactive run:** pause and present the threatening point(s) and which charter
-  element each targets (problem / thesis). Ask the user to steer (blocking question):
-  - **Accept the shift** → then ask *Continue or sign off?*
-    - **Continue** → the user has endorsed the new direction. Append the accepted
-      threats to the resolver's critique list (so the resolver actually makes the
-      shift), set `defense_directive = none`, **re-derive the charter** to the new
-      direction (§1a procedure, overwrite `charter.md`), record outcome
-      `accepted-continue`, and continue to §4c.
-    - **Sign off** → stop the loop now with reason `charter_signoff`; the current
-      idea (this round's input, not yet re-resolved) is final. Record outcome
-      `accepted-signoff` and go to §5.
-  - **Defend manually** → capture the user's rebuttal text; set
-    `defense_directive = manual:<text>`; record outcome `defended-manual`; continue
-    to §4c. The thesis is held.
-  - **Resolver defends** → set `defense_directive = resolver`; record outcome
-    `defended-resolver`; continue to §4c. The thesis is held. If a later round
-    re-raises the same shift, this gate fires again.
-- **Record the shift event** (for §5b) regardless of branch: `{round, elements
-  (problem/thesis), threats (verbatim), outcome}`.
+- Set `defense_directive = resolver` and append the threats to the resolver's
+  critique context as a labelled block —
+  `Approach threats to defend (do not treat as ordinary critiques):` followed by
+  one bullet per threat as `- (<model>) <threat>`. The resolver (§4d) writes a
+  principled defense and keeps the Approach.
+- **Record the shift event** (for §5b): `{round, threats (verbatim, attributed),
+  outcome: defended-resolver}`.
+- The charter is never re-derived mid-run. If a later round re-raises the same
+  threat, this gate fires again — a convincing defense is what stops the re-raise
+  and lets the loop converge. The user weighs the recorded threats after the run
+  (`summary.md` § Charter & shifts) and re-seeds a new run if an approach change
+  is warranted.
 
-#### 4c. Clarifications (optional)
+#### 4c. Clarifications (logged, never asked)
 
-- Collect `clarifications` from all parsed verdicts. If any and the run is
-  interactive, ask the user and append `Clarifications from the author:` + the Q/A
-  to the critique context. In non-interactive runs, log that they were skipped.
+- Collect `clarifications` from all parsed verdicts. Never ask the user — the loop
+  is zero-interaction. Log each as `! clarification (unasked) (<model>): <question>`
+  and record it for §5b. Clarifications still block convergence (quorum unchanged),
+  which pressures critics to resolve them from the idea text in later rounds or
+  drop them.
 
 #### 4d. Resolve (peers propose, owner synthesizes)
 
@@ -228,18 +230,30 @@ charter's **problem or thesis** has been detected — do **not** resolve it sile
   with the round's directive from §4b′), and seed a generic subagent (via Task) with the
   result. It returns the full revised idea + `---DISPOSITION---` + per-critique
   disposition. Split on `---DISPOSITION---`.
-- The `defense_directive` governs how the resolver treats the charter (the resolver
-  prompt defines each value):
-  - `none` — normal resolve; address the critique list within the charter's bet.
-    (When the gate set this via **accept-continue**, the accepted shift is already in
-    the critique list and the charter was re-derived, so "within the bet" now means
-    the new direction.)
-  - `manual:<text>` — fold the user's rebuttal in as the authoritative defense; keep
-    the thesis.
-  - `resolver` — write a principled defense of the thesis against the threat; keep the
-    thesis.
-  - `hold` — keep the thesis and note the threat unresolved in the disposition.
-- If the resolver fails, stop with reason `resolve_failed` (retain the prior idea).
+- The `defense_directive` governs how the resolver treats the Approach (the
+  resolver prompt defines each value):
+  - `none` — normal resolve; address the critique list within the charter's
+    Approach.
+  - `resolver` — defend the Approach against the round's threats (appended to the
+    critique context by §4b′ under the `Approach threats to defend` label) and
+    keep it.
+- If the resolver call fails, stop with reason `resolve_failed` (retain the prior
+  idea).
+- **Problem-drift check (coordinator), before accepting the revision:**
+  1. **Mechanical:** the revised idea must begin with the charter's `## Problem`
+     section, matching `charter.md`'s verbatim (whitespace-normalized). Missing or
+     changed ⇒ drift.
+  2. **Judgment backstop:** if the echo matches, read the body once — if it no
+     longer serves the Problem (the echo as camouflage), that is drift too.
+
+  On drift, re-run this §4d synthesis **once**, appending to the critique context:
+  `Corrective note: your previous revision drifted off the frozen ## Problem —
+  <one line naming the drift>. Revise again: reproduce the ## Problem section
+  verbatim and keep the idea serving it.` If the retry still drifts: discard the
+  revision, keep the prior idea as current, log
+  `! revision discarded (off-problem drift) — prior idea retained`, record the
+  event for §5b, and continue to §4e. Drift is never `resolve_failed` (that reason
+  stays reserved for failed calls).
 - Otherwise set the current idea to the revised idea and snapshot it as
   `runs/<ts>/idea-v<n>.md`. Record the round's critiques + disposition.
 
