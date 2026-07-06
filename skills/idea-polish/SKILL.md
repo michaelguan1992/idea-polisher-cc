@@ -266,16 +266,14 @@ zero-interaction after charter confirmation (§1a):
 
 The loop produces a deliverable (`final-idea.md`) and a process record (`summary.md`).
 Run the finalize step first, then write both files. This runs for **every** stop reason
-(`converged`, `K-rounds`, `resolve_failed`, `charter_signoff`) and for the
-no-reachable-peers single-model case — always from whatever the current idea is at loop
-end. For `charter_signoff` the final idea is the loop's current idea (the round that
-triggered sign-off did not re-resolve).
+(`converged`, `K-rounds`, `resolve_failed`) and for the no-reachable-peers
+single-model case — always from whatever the current idea is at loop end.
 
 #### 5a. Finalize (owner synthesizes the deliverable)
 
 - Collect the **rejected** critiques across all rounds from the per-round dispositions
   recorded in §4d (the ordinary critiques that were raised but left unresolved).
-  **Charter shift events (§4b′) are not passed to the finalizer** — they are process
+  **Approach-threat events (§4b′) and off-problem discards are not passed to the finalizer** — they are process
   record, kept out of the deliverable and written only to `summary.md` (§5b).
 - Read `references/prompts/finalizer.md`, substitute its slots (`{idea}` with the
   current/final idea, `{unresolved_critiques}` with that list of unresolved critiques),
@@ -298,12 +296,17 @@ permitted contents:
 - Header: participating models, stop reason, and a pointer to `final-idea.md` as the
   deliverable.
 - `## Original idea` — the seed.
-- `## Charter & shifts` — the (final) charter (problem + thesis, noting `unconfirmed`
-  if it was never confirmed), then every charter shift event from §4b′ in order:
-  `round`, the element(s) targeted (problem / thesis), the threat(s) verbatim, and the
-  outcome (`accepted-continue` / `accepted-signoff` / `defended-manual` /
-  `defended-resolver` / `held`). If the gate never fired, say "no charter shifts —
-  the idea stayed on its seed." Held shifts live **here only**, not in `final-idea.md`.
+- `## Charter & shifts` — the charter (Problem + Approach, noting `unconfirmed` if
+  it was never confirmed; frozen for the run by design), then every approach-threat
+  event from §4b′ in order: `round`, the threat(s) verbatim (attributed by model),
+  and the outcome (always `defended-resolver`). If the gate never fired, say "no
+  approach threats — the idea stayed on its seed." This section is where the user
+  decides, **after** the run, whether a threat deserves a re-seeded Approach.
+  Threats live **here only**, not in `final-idea.md`.
+- `## Off-problem discards` — one line per discarded critique
+  (`round, model, critique, layer that caught it: critic / resolver / coordinator`),
+  one line per discarded revision or corrective retry from the §4d drift check, and
+  one line per unasked clarification (`round, model, question`); or "none".
 - `## Round-by-round evolution` — for each round: the critiques raised (attributed by
   model) and the resolver's disposition for each (addressed / rejected), or "Converged:
   no constructive critiques", or "Resolve step failed; prior idea retained".
@@ -319,10 +322,13 @@ polished idea (from `final-idea.md`).
 
 ## Acceptance check
 
-On a held-out seed idea, a before/after read of `final-idea.md` should confirm the final
-idea is more complete / specific than the seed **and still serves the charter's problem
-and thesis** — any move off the seed's bet should appear in `summary.md`'s
-`## Charter & shifts` as a user-steered event (`accepted-*`, `defended-*`, or `held`),
-never as a silent pivot. To customize behavior, edit the single-source role prompts in
-`references/prompts/{critic,resolver,finalizer}.md` (the critic prompt is referenced,
-not re-inlined, by `references/peers.md`).
+On a held-out seed idea, a before/after read of `final-idea.md` should confirm the
+final idea is more complete / specific than the seed, **begins with the charter's
+`## Problem` verbatim**, and still serves that Problem within its `## Approach`.
+After charter confirmation the run must complete with **zero further prompts to the
+user**: approach threats appear in `summary.md` § Charter & shifts as
+`defended-resolver` events, tangents in § Off-problem discards, clarifications as
+unasked log lines — never as silent pivots or mid-run questions. To customize
+behavior, edit the single-source role prompts in
+`references/prompts/{critic,resolver,finalizer}.md` (the critic prompt is
+referenced, not re-inlined, by `references/peers.md`).
