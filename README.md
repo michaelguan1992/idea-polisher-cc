@@ -44,6 +44,7 @@ design is carried over from that project's reviewed plan
 /idea-polish "<your idea>" --with gemini
 /idea-polish "<your idea>" --without agy
 /idea-polish "<your idea>" --peers codex,gemini
+/idea-polish --file idea.md --auto
 ```
 
 - `--rounds N` — max critique/resolve rounds (default 10).
@@ -52,6 +53,8 @@ design is carried over from that project's reviewed plan
 - `--peers <a,b,...>` — run exactly this set of peers (overrides the defaults).
 - `--with <a,b,...>` — add these peers to the defaults.
 - `--without <a,b,...>` — drop these peers from the defaults.
+- `--auto` — non-interactive: never asks a human (errors if no idea is given;
+  charter derived unconfirmed). For agents and scheduled routines.
 
 The **default set** is the Claude host (always on — not a selectable peer) plus the
 default-on peers `codex` and `agy`. Flags select among **peers only**, so `claude`
@@ -59,6 +62,19 @@ is not a valid flag value (`--without claude` / `--peers claude` error). Resolut
 `base = --peers if given, else the defaults; selected = (base + --with) − --without`.
 With no flags the run is exactly the current behavior. An unknown peer name errors
 and lists the registered peers.
+
+### Headless / agent invocation
+
+Agents and scheduled routines run the skill headlessly from the directory where
+`runs/` should land:
+
+```
+claude -p "/idea-polish --file idea.md --auto"
+```
+
+The final message names `runs/<ts>/final-idea.md` and `runs/<ts>/summary.md` and
+prints the polished idea. See `skills/idea-polish/SKILL.md` § Agent & routine
+invocation for the full contract.
 
 ### Adding a model
 
