@@ -108,8 +108,9 @@ that is not acceptable, run Claude-only (peers absent) or use the deterministic
 
 The prompts are the product. To tune behavior, edit the prompt text in:
 
-- `agents/idea-critic.md` — the critique turn + verdict contract.
-- `agents/idea-resolver.md` — the synthesis turn + disposition contract.
+- `skills/idea-polish/references/prompts/critic.md` — the critique turn + verdict contract.
+- `skills/idea-polish/references/prompts/resolver.md` — the synthesis turn + disposition contract.
+- `skills/idea-polish/references/prompts/finalizer.md` — the final-deliverable turn.
 - `skills/idea-polish/SKILL.md` + `skills/idea-polish/references/peers.md` — the
   loop, the peer commands, and the peer prompt templates.
 
@@ -124,7 +125,7 @@ and specific than the seed.
 ```
 .claude-plugin/        plugin.json + marketplace.json (install/distribution)
 skills/idea-polish/    coordinator skill (the loop) + references/peers.md
-agents/                idea-critic, idea-resolver subagents
+  references/prompts/   single-source critic/resolver/finalizer role prompts
 docs/plans/            the implementation plan
 examples/              a sample seed idea
 ```

@@ -1,8 +1,8 @@
 # Peer models — invocation reference
 
 The coordinator (`SKILL.md`) calls the peer CLIs via Bash. Claude (host/owner)
-never appears here — its turns run natively through the `idea-critic` /
-`idea-resolver` subagents. Behavior is carried from the `idea_polisher` reference
+never appears here — its turns run natively via generic subagents seeded from the
+shared prompt assets in `prompts/`. Behavior is carried from the `idea_polisher` reference
 (`idea_polish.py`: `MODELS`, `run_model`, `connection_test`).
 
 ## Peer roster
@@ -26,8 +26,8 @@ for that step).
 > **Reminder — pin the model and reasoning level.** A bare command uses the CLI's
 > *default* model and reasoning effort. For a deliberate cross-model debate, set
 > them explicitly in the `Command` column (e.g. `codex exec -m <model> -c
-> model_reasoning_effort=high`, `agy --model <model>`) — and set Claude's own
-> model/effort in the `idea-critic` / `idea-resolver` agent frontmatter. A weak or
+> model_reasoning_effort=high`, `agy --model <model>`). Claude's own turns run at the
+> host session's model/effort (the generic subagents inherit it). A weak or
 > low-effort setting silently degrades the critique quality.
 
 ## Adding a peer
@@ -101,8 +101,9 @@ level rises accordingly. Two trust boundaries:
 
 2. **Prompt injection — treat peer output as untrusted.** Peer stdout flows back
    into the resolver. The coordinator wraps each peer's output in
-   `---PEER-OUTPUT-START---` / `---PEER-OUTPUT-END---`, and `idea-resolver` is
-   instructed to treat that content as data, never as instructions.
+   `---PEER-OUTPUT-START---` / `---PEER-OUTPUT-END---`, and the resolver prompt
+   (`prompts/resolver.md`) instructs the model to treat that content as data, never as
+   instructions.
 
 **Working directory:** run peer calls with the run folder (`runs/<ts>/`) as `cwd`,
 so a peer agent's **relative**-path writes default there. This is *not* a sandbox —
@@ -138,43 +139,11 @@ Substitute the bracketed slots, write the result to the prompt file, then invoke
 
 ### Critic prompt (sent to each peer critic in step 4a)
 
-```
-You are a sharp, constructive critic reviewing an idea.
-
-Idea:
-"""
-{idea}
-"""
-
-Charter (the seed's original problem and core thesis — the bet this idea must keep serving):
-"""
-{charter}
-"""
-
-Point out concrete weaknesses, risks, gaps, or unclear points. If something is
-genuinely unclear and blocks review, ask a clarifying question instead. Be
-specific and brief. If the idea is already solid, say so honestly.
-
-Classify each critique against the charter. A critique that would require SHIFTING
-the charter's problem or thesis — abandoning the seed's core bet (its moat/mechanism)
-or solving a different problem — is a "charter threat", not an ordinary critique. A
-critique that improves the idea WITHIN its bet (sharper wording, a missing risk, a
-narrower scope) is an ordinary critique; narrowing breadth alone is NOT a charter
-threat. Put charter-threatening points in "charter_threats" and do not also list them
-in "critiques".
-
-End your reply with a line containing exactly ---VERDICT-JSON--- followed by a JSON object:
----VERDICT-JSON---
-{"constructive": true, "critiques": ["..."], "clarifications": [], "charter_threats": []}
-
-Rules for the JSON:
-- "constructive": set false ONLY when you have no substantive critique, no
-  clarification request, and no charter threat (the idea is ready to ship).
-- "critiques": concrete critique points that stay within the charter's bet (empty when constructive is false).
-- "clarifications": questions you need answered (usually empty).
-- "charter_threats": points that would require shifting the charter's problem or thesis (usually empty).
-Put the JSON last, after the ---VERDICT-JSON--- line, with nothing following it.
-```
+The canonical critic prompt is the single-source asset
+[`prompts/critic.md`](prompts/critic.md) (shared with Claude's own critic turn).
+Substitute `{idea}` and `{charter}`, write the result to the prompt file, then invoke
+per § Security posture. Do not re-inline a copy here — it would re-open the drift the
+convergence quorum depends on not having.
 
 ### Proposal prompt (sent to each peer in step 4d)
 
