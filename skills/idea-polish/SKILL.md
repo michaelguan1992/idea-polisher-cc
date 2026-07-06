@@ -27,12 +27,21 @@ prompt templates, and the security posture.
 
 - **Verdict delimiter:** `---VERDICT-JSON---`. A critic's verdict is the JSON object
   after the **last** occurrence. Shape: `{"constructive": bool, "critiques": [str], "clarifications": [str], "charter_threats": [str]}`.
-- **Charter threat:** a critique point the critic judges would require **shifting the
-  charter's problem or thesis** (§1a) — i.e. abandoning the seed's core bet, not
-  improving the idea within it. Threats go in `charter_threats` and are **not**
-  duplicated in `critiques`. The field is **optional for backward compatibility**: a
-  verdict that omits it parses with `charter_threats: []` (a peer running an older
-  prompt simply contributes no threats; it does not break the round).
+- **Approach threat:** a critique point whose fix would require **rewriting the
+  charter's `## Approach` sentence(s)** (§1a) — a challenge to how the idea wins,
+  judged against the charter's text, not a notion like "the core bet". Threats go
+  in `charter_threats` (**the JSON key keeps its historical name — never rename
+  it**) and are **not** duplicated in `critiques`. The field is **optional for
+  backward compatibility**: a verdict that omits it parses with
+  `charter_threats: []` (a peer running an older prompt simply contributes no
+  threats; it does not break the round).
+- **Off-problem:** a critique (or a revision) is off-problem when acting on it
+  would not serve what the charter's `## Problem` sentence says — a tangent, or a
+  remedy that solves a different problem (the Problem is frozen for the run).
+  Off-problem items are **discarded in the round they appear** and logged in
+  `summary.md`; they are never resolved and never gated. Enforced at three
+  layers: the critic prompts (self-filter), the resolver's disposition
+  (`discarded (off-problem)`), and the coordinator (§4b screen, §4d drift check).
 - **Disposition delimiter:** `---DISPOSITION---`. The resolver's reply is the revised
   idea before it, the per-critique disposition after it.
 - **Parse failure:** a critic call that succeeded but whose verdict can't be parsed
@@ -41,8 +50,8 @@ prompt templates, and the security posture.
 - **Convergence quorum:** the loop has converged iff **at least one** verdict parsed
   AND **every parsed** verdict has `constructive: false` with no `clarifications` and
   no `charter_threats`. Parse failures and failed calls do not count toward or against
-  the quorum. (A live charter threat keeps the loop from converging — it is routed to
-  the §4b′ gate instead.)
+  the quorum. (A live approach threat keeps the loop from converging — it is routed to
+  the §4b′ gate, whose resolver defense is what talks later rounds out of re-raising it.)
 
 ## Procedure
 
@@ -73,32 +82,40 @@ prompt templates, and the security posture.
   Bash calls use this folder as their working directory (see `references/peers.md`
   § Security). Write the original idea to `runs/<ts>/idea-v0.md`.
 
-### 1a. Charter capture (the fidelity anchor — carry through the whole run)
+### 1a. Charter capture (the fidelity anchor — frozen for the whole run)
 
 The **charter** is the seed's immutable core. It anchors every later round so a
-critique can't silently steer the idea onto a different problem or a different bet.
-It has exactly two parts (scope/breadth is deliberately **not** in it — narrowing a
-platform to one workflow is legitimate convergence, not drift):
+critique can't silently steer the idea onto a different problem or a different
+approach. Both sections are **1–2 sentences each** — short, fixed text is what the
+off-problem and approach-threat tests anchor to (the referent is the charter's
+sentences, not a concept). Scope/breadth is deliberately **not** in it — narrowing
+a platform to one workflow is legitimate convergence, not drift.
 
-- **Problem** — the pain/need the idea exists to serve (one sentence).
-- **Thesis** — the central bet: *how* it wins and *why* it is defensible, named at
-  the **mechanism** level (the moat/flywheel/wedge), not just the topic. "A reuse
-  platform" is a topic; "a cross-customer ML effectiveness-discriminator flywheel as
-  the moat" is a thesis.
+- **Problem** — the pain/need the idea exists to serve (1–2 sentences).
+  **Frozen: never rewritten by anyone during the run.** Every revision reproduces
+  it verbatim as its first section (§4d).
+- **Approach** — *how* the idea wins and *why* it is defensible, named at the
+  **mechanism** level (the moat/flywheel/wedge), not just the topic
+  (1–2 sentences). "A reuse platform" is a topic; "a cross-customer ML
+  effectiveness-discriminator flywheel as the moat" is an approach. Challenges to
+  it are defended by the resolver (§4b′) and recorded in `summary.md` for the user
+  to act on between runs.
 
 Procedure:
 
-1. Distill `{problem, thesis}` from `idea-v0.md` in plain language. If the seed has
-   no discernible thesis (a brain-dump of unresolved concerns), **ask the user to
-   state the bet** rather than inventing one.
-2. **Confirm before the loop.** In an interactive run, show the drafted charter and
-   let the user correct it (the charter is load-bearing — a mis-stated thesis anchors
-   the gate on the wrong thing). In a non-interactive run, derive it, mark it
-   `unconfirmed`, and log that confirmation was skipped.
-3. Freeze it to `runs/<ts>/charter.md` (a `## Problem` and a `## Thesis` section).
-4. **Inject the charter** (fenced) into every critic turn (§4a), every resolver turn
-   (§4d), and every peer critique/proposal call for the rest of the run. It is
-   re-derived only when the user **accepts** a shift (§4b′).
+1. Distill `{problem, approach}` from `idea-v0.md` in plain language, 1–2
+   sentences each. If the seed has no discernible approach (a brain-dump of
+   unresolved concerns), **ask the user to state it** rather than inventing one.
+2. **Confirm before the loop — the run's only user pause.** In an interactive
+   run, show the drafted charter and let the user correct it (a mis-drafted
+   charter anchors the whole zero-interaction run on the wrong thing). In a
+   non-interactive run, derive it, mark it `unconfirmed`, and log that
+   confirmation was skipped.
+3. Freeze it to `runs/<ts>/charter.md` (a `## Problem` and an `## Approach`
+   section).
+4. **Inject the charter** (fenced) into every critic turn (§4a), every resolver
+   turn (§4d), and every peer critique/proposal call for the rest of the run. It
+   is **never re-derived mid-run**.
 
 ### 2. Connection test
 
