@@ -176,9 +176,8 @@ questions** (as opposed to a clean idea statement):
 
 - **Claude:** read `references/prompts/critic.md`, substitute its slots (`{idea}` with
   the current idea fenced in triple quotes, `{charter}` with the charter §1a fenced,
-  `{context}` with the frozen context block §1a fenced),
-  and seed a generic subagent (via Task) with the result. Its final message is the
-  verdict block.
+  `{context}` with the frozen context block §1a fenced), and seed a generic subagent
+  (via Task) with the result. Its final message is the verdict block.
 - **Peers:** for each reachable peer (the survivors of §2), send the critic prompt
   per `references/peers.md` § Critic prompt (which includes the charter and context)
   and capture
