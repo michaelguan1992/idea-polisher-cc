@@ -85,6 +85,18 @@ prompt templates, and the security posture.
   "non-interactive run", the trigger is `--auto`; without the flag the run is
   interactive.
 - **Timeout:** per peer call, default **120s** (`--timeout`).
+- **Claude turn model/effort:** `--critic-model M` / `--critic-effort E` for
+  Claude's own critic turns (§4a), `--resolver-model M` / `--resolver-effort E`
+  for its resolver turns (§4d) — all optional. `M` is passed through as the Task
+  call's `model` parameter, unvalidated (an unknown model errors at the Task
+  call); unset ⇒ inherit the host session, exactly the prior behavior. `E` is
+  `low` | `medium` | `high`, mapped to a thinking directive prepended as the
+  **first line** of the seeded prompt (before the substituted role-prompt text):
+  `low` → no line, `medium` → `Think hard.`, `high` → `Ultrathink.` — a
+  thinking-budget nudge, not a hard setting. Any other effort value stops the
+  run with `error: invalid effort '<value>'; expected low|medium|high`. Peers
+  are unaffected (they pin model/effort in the roster `Command` —
+  `references/peers.md`), and the finalizer (§5a) always inherits the host.
 - **Run folder:** create `runs/<YYYYMMDD-HHMMSS>/` under the current working
   directory and use it for every prompt file, snapshot, and output below. All peer
   Bash calls use this folder as their working directory (see `references/peers.md`
@@ -166,7 +178,7 @@ questions** (as opposed to a clean idea statement):
 - Else classify the idea yourself: does it embed critiques/concerns/open questions?
   Yes → **resolve-first**; No → **critique-first**. When genuinely unsure, default
   to **critique-first**.
-- **Resolve-first:** run one resolve step (§4c) with the critique context
+- **Resolve-first:** run one resolve step (§4d) with the critique context
   `"The idea text already contains embedded critiques/concerns; address them."`,
   snapshot the result as `idea-v0-resolved.md`, then enter the loop.
 
@@ -177,7 +189,9 @@ questions** (as opposed to a clean idea statement):
 - **Claude:** read `references/prompts/critic.md`, substitute its slots (`{idea}` with
   the current idea fenced in triple quotes, `{charter}` with the charter §1a fenced,
   `{context}` with the frozen context block §1a fenced), and seed a generic subagent
-  (via Task) with the result. Its final message is the verdict block.
+  (via Task, passing `--critic-model` as the `model` parameter when set) with the
+  result — when `--critic-effort` is set, prepend its thinking directive (§1) as
+  the first line of the seeded prompt. Its final message is the verdict block.
 - **Peers:** for each reachable peer (the survivors of §2), send the critic prompt
   per `references/peers.md` § Critic prompt (which includes the charter and context)
   and capture
@@ -252,9 +266,12 @@ zero-interaction after charter confirmation (§1a):
 - **Synthesis:** read `references/prompts/resolver.md`, substitute its slots (`{idea}`
   with the current idea, `{charter}` §1a fenced, `{context}` §1a fenced, `{critiques}` with the critique list
   from 4b, `{peer_proposals}` with the wrapped peer proposals, `{defense_directive}`
-  with the round's directive from §4b′), and seed a generic subagent (via Task) with the
-  result. It returns the full revised idea + `---DISPOSITION---` + per-critique
-  disposition. Split on `---DISPOSITION---`.
+  with the round's directive from §4b′), and seed a generic subagent (via Task,
+  passing `--resolver-model` as the `model` parameter when set) with the result —
+  when `--resolver-effort` is set, prepend its thinking directive (§1) as the
+  first line of the seeded prompt. The drift-check corrective retry below re-runs
+  this synthesis and uses the same model/effort. It returns the full revised idea
+  + `---DISPOSITION---` + per-critique disposition. Split on `---DISPOSITION---`.
 - The `defense_directive` governs how the resolver treats the Approach (the
   resolver prompt defines each value):
   - `none` — normal resolve; address the critique list within the charter's
