@@ -78,6 +78,14 @@ environment (see Install above) — otherwise `claude -p` fails with
 `Unknown command: /idea-polish`. See `skills/idea-polish/SKILL.md` § Agent &
 routine invocation for the full contract.
 
+### Context files
+
+Files in a `context/` folder beside the `--file` seed (e.g. `examples/context/` next
+to `examples/sample-idea.md`) are read once and injected as trusted background into
+every critic and resolver turn. Context loads **only** with `--file` — a bare-argument
+or prompted idea has no sibling folder to read. The charter still governs: context
+informs the debate but never overrides the frozen `## Problem`.
+
 ### Adding a model
 
 Any conforming CLI can join as a peer — add a row to the roster in
