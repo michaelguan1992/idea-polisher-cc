@@ -27,7 +27,9 @@ for that step).
 > *default* model and reasoning effort. For a deliberate cross-model debate, set
 > them explicitly in the `Command` column (e.g. `codex exec -m <model> -c
 > model_reasoning_effort=high`, `agy --model <model>`). Claude's own turns run at the
-> host session's model/effort (the generic subagents inherit it). A weak or
+> host session's model/effort (the generic subagents inherit it) unless overridden
+> per run with `--critic-model` / `--critic-effort` / `--resolver-model` /
+> `--resolver-effort` (`SKILL.md` §1). A weak or
 > low-effort setting silently degrades the critique quality.
 
 ## Adding a peer

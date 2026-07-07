@@ -45,6 +45,7 @@ design is carried over from that project's reviewed plan
 /idea-polish "<your idea>" --without agy
 /idea-polish "<your idea>" --peers codex,gemini
 /idea-polish --file idea.md --auto
+/idea-polish "<your idea>" --critic-model haiku --critic-effort high --resolver-model opus
 ```
 
 - `--rounds N` — max critique/resolve rounds (default 10).
@@ -55,6 +56,11 @@ design is carried over from that project's reviewed plan
 - `--without <a,b,...>` — drop these peers from the defaults.
 - `--auto` — non-interactive: never asks a human (errors if no idea is given;
   charter derived unconfirmed). For agents and scheduled routines.
+- `--critic-model M` / `--critic-effort low|medium|high` — model and reasoning
+  effort for Claude's **own** critic turns (default: inherit the session). Peers
+  pin theirs in the roster instead (`references/peers.md`).
+- `--resolver-model M` / `--resolver-effort low|medium|high` — same, for Claude's
+  own resolver turns.
 
 The **default set** is the Claude host (always on — not a selectable peer) plus the
 default-on peers `codex` and `agy`. Flags select among **peers only**, so `claude`
