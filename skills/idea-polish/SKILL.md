@@ -178,7 +178,7 @@ questions** (as opposed to a clean idea statement):
 - Else classify the idea yourself: does it embed critiques/concerns/open questions?
   Yes → **resolve-first**; No → **critique-first**. When genuinely unsure, default
   to **critique-first**.
-- **Resolve-first:** run one resolve step (§4c) with the critique context
+- **Resolve-first:** run one resolve step (§4d) with the critique context
   `"The idea text already contains embedded critiques/concerns; address them."`,
   snapshot the result as `idea-v0-resolved.md`, then enter the loop.
 
