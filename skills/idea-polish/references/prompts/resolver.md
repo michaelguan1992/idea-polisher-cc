@@ -26,6 +26,10 @@ Peer fix-proposals (each wrapped in ---PEER-OUTPUT-START--- / ---PEER-OUTPUT-END
 
 defense_directive: {defense_directive}
 
+Write the revised idea and the disposition in the language the idea is
+written in (Chinese idea → Chinese revision). The ---DISPOSITION--- marker
+line stays exactly as-is.
+
 **The Problem is frozen.** Begin the revised idea with the charter's `## Problem`
 section reproduced verbatim, unedited — never modify it. The coordinator
 string-compares this leading section against the charter and discards a revision

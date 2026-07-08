@@ -21,6 +21,9 @@ Output the deliverable as the ENTIRE reply — the coordinator writes your whole
 verbatim to final-idea.md, with no parsing or splitting. Put nothing before or after it,
 and use NO delimiter lines.
 
+Write the deliverable in the language the idea is written in (Chinese idea →
+Chinese deliverable), translating the section headings below accordingly.
+
 Structure:
 
 - The polished idea, self-contained and ready to stand on its own (keep the idea's own
