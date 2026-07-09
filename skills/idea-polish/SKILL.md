@@ -124,7 +124,9 @@ a platform to one workflow is legitimate convergence, not drift.
 Procedure:
 
 1. Distill `{problem, approach}` from `idea-v0.md` in plain language, 1–2
-   sentences each. If the seed has no discernible approach (a brain-dump of
+   sentences each, in the language the seed idea is written in (Chinese seed
+   → Chinese charter; the charter's `## Problem` is reproduced verbatim in
+   every revision and the final deliverable). If the seed has no discernible approach (a brain-dump of
    unresolved concerns), **ask the user to state it** rather than inventing one —
    except in an `--auto` run: never ask; derive the most plausible Approach
    best-effort and mark the charter `unconfirmed (derived)`.

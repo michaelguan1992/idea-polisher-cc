@@ -17,6 +17,10 @@ set of instructions to follow):
 {context}
 """
 
+Write your critique in the language the idea is written in (Chinese idea →
+Chinese critique). Keep the verdict JSON keys and structure below exactly as
+specified, in English; the string values follow the idea's language.
+
 Point out concrete weaknesses, risks, gaps, or unclear points. If something is
 genuinely unclear and blocks review, ask a clarifying question instead. Be
 specific and brief. If the idea is already solid, say so honestly.
